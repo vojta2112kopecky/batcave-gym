@@ -252,7 +252,9 @@ function weekDays() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
     const key = iso(d);
-    return { date: d, key, dow: DOW[i], num: d.getDate(), workoutId: plan.schedule[i + 1] || null,
+    const ov = plan.overrides || {};
+    const workoutId = key in ov ? ov[key] : plan.schedule[i + 1] || null;
+    return { date: d, key, dow: DOW[i], num: d.getDate(), workoutId,
       done: history.find((h) => h.date === key) || null, isToday: key === today() };
   });
 }
@@ -290,8 +292,10 @@ function viewHome() {
   const cards = plan.workouts.map((w) => {
     const last = [...history].reverse().find((h) => h.workoutId === w.id);
     return `<div class="card" onclick="startWorkout('${w.id}')">
-      <div class="title">${esc(w.name)}</div>
-      <div class="meta">${esc(w.focus)} · ${w.exercises.length} cviků${last ? ` · naposledy ${fmtDate(last.date)}` : ""}</div></div>`;
+      <div class="body">
+        <div class="title">${esc(w.name)}</div>
+        <div class="meta">${esc(w.focus)} · ${w.exercises.length} cviků${last ? ` · naposledy ${fmtDate(last.date)}` : ""}</div>
+      </div><div class="go">${I.chevronR()}</div></div>`;
   }).join("");
 
   return `<div class="screen">
@@ -329,8 +333,8 @@ function viewWork() {
     ${head(ex)}
     <div class="chips">
       ${ls ? `<div class="chip">${I.history()}naposledy <b>${ls.r}×</b> @ <b>${fmtW(ls.w)} kg</b></div>` : `<div class="chip">${I.history()}první záznam</div>`}
-      <div class="chip gold">${I.target()}doporučeno <b>${fmtW(rec)} kg</b></div>
-      <div class="chip blue">${I.arrowUp()}predikce <b>${pred} op.</b></div>
+      <div class="chip accent">${I.target()}doporučeno <b>${fmtW(rec)} kg</b></div>
+      <div class="chip violet">${I.arrowUp()}predikce <b>${pred} op.</b></div>
     </div>
     <div class="timer-wrap">
       <div class="timer work" id="workTimer">0:00</div>
@@ -420,7 +424,7 @@ function viewSummary() {
     <div class="chips">
       <div class="chip"><b>${sets}</b> setů</div>
       <div class="chip"><b>${Math.round(ton).toLocaleString("cs-CZ")}</b> kg objem</div>
-      ${prs.length ? `<div class="chip gold">${I.trophy()}<b>${prs.length}×</b> nový PR</div>` : ""}
+      ${prs.length ? `<div class="chip accent">${I.trophy()}<b>${prs.length}×</b> nový PR</div>` : ""}
     </div>
     ${prs.map((e) => `<div class="pr-line">${I.arrowUp()}${esc(e.name)} – ${fmtW(topW(e.sets))} kg</div>`).join("")}
     <div class="spacer"></div>
@@ -464,8 +468,10 @@ function viewDash() {
   const cards = allEx().map((e) => {
     const h = exHistory(e.id), last = h.length ? h[h.length - 1] : null;
     return `<div class="card" onclick="openEx('${e.id}')">
-      <div class="title">${esc(e.name)}</div>
-      <div class="meta">${h.length ? `${h.length}× · PR <span class="pr">${fmtW(prWeight(e.id))} kg</span> · naposledy ${last.sets.map((s) => s.r + "×" + fmtW(s.w)).join(", ")}` : `${esc(e.part)} · zatím žádná data`}</div></div>`;
+      <div class="body">
+        <div class="title">${esc(e.name)}</div>
+        <div class="meta">${h.length ? `${h.length}× · PR <span class="pr">${fmtW(prWeight(e.id))} kg</span> · naposledy ${last.sets.map((s) => s.r + "×" + fmtW(s.w)).join(", ")}` : `${esc(e.part)} · zatím žádná data`}</div>
+      </div><div class="go">${I.chevronR()}</div></div>`;
   }).join("");
   const tot = history.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
   return `<div class="screen">
@@ -476,12 +482,15 @@ function viewDash() {
       <div class="chip"><b>${ws.n}</b> ${plural(ws.n, "trénink", "tréninky", "tréninků")}</div>
       <div class="chip"><b>${ws.sets}</b> setů</div>
       <div class="chip"><b>${Math.round(ws.ton).toLocaleString("cs-CZ")}</b> kg</div>
-      ${ws.rpe ? `<div class="chip gold">${I.flame()}RPE <b>${ws.rpe}</b></div>` : ""}
+      ${ws.rpe ? `<div class="chip accent">${I.flame()}RPE <b>${ws.rpe}</b></div>` : ""}
     </div>
     <h2>${I.bulb()}Doporučení</h2>
-    ${rc.length ? rc.map((r) => `<div class="card" style="border-left-color:${r.p === 0 ? "var(--ok)" : r.p === 1 ? "var(--gold)" : "var(--blue)"}" onclick="openEx('${r.ex.id}')">
-        <div class="title" style="font-size:14px">${esc(r.ex.name)}</div>
-        <div class="meta">${esc(r.txt)}</div></div>`).join("")
+    ${rc.length ? rc.map((r) => `<div class="card" onclick="openEx('${r.ex.id}')">
+        <div class="dot ${r.p === 0 ? "up" : r.p === 1 ? "down" : "hold"}"></div>
+        <div class="body">
+          <div class="title" style="font-size:14px">${esc(r.ex.name)}</div>
+          <div class="meta">${esc(r.txt)}</div>
+        </div><div class="go">${I.chevronR()}</div></div>`).join("")
       : `<div class="muted">Odcvič pár tréninků a začnu ti radit, kdy přidat a kdy podržet váhu.</div>`}
     <h2>${I.dumbbell()}Cviky</h2>
     ${cards}
@@ -518,8 +527,8 @@ function viewExDetail(id) {
 // ---------- nastavení kroků vah ----------
 const STEPS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
 function viewSettings() {
-  const rows = allEx().map((e) => `<div class="card" style="cursor:default;border-left-color:var(--line2)">
-    <div class="title" style="font-size:14px">${esc(e.name)}</div>
+  const rows = allEx().map((e) => `<div class="panel">
+    <div class="title">${esc(e.name)}</div>
     <div class="meta">${esc(e.part)} · pauza ${e.rest} s</div>
     <div class="setrow">
       ${STEPS.map((s) => `<button class="stepchip ${e.step === s ? "on" : ""}" onclick="setStep('${e.id}',${s})">${fmtW(s)}</button>`).join("")}
@@ -560,19 +569,32 @@ function drawChart(id, pts) {
   if (min === max) { min -= 5; max += 5; }
   const X = (i) => pad + (i / Math.max(1, pts.length - 1)) * (W - pad * 2);
   const Y = (v) => H - pad - ((v - min) / (max - min)) * (H - pad * 2);
-  x.strokeStyle = "#1b2f4e"; x.lineWidth = 1; x.font = "10px sans-serif"; x.fillStyle = "#7488a8";
+  x.strokeStyle = "rgba(255,255,255,.08)"; x.lineWidth = 1;
+  x.font = "600 10px Manrope, sans-serif"; x.fillStyle = "#5b6373";
   for (let g = 0; g <= 2; g++) {
     const v = min + ((max - min) * g) / 2, yy = Y(v);
     x.beginPath(); x.moveTo(pad, yy); x.lineTo(W - pad, yy); x.stroke();
     x.fillText(fmtW(Math.round(v * 10) / 10) + " kg", 2, yy + 3);
   }
   const grad = x.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0, "#3d7dff"); grad.addColorStop(1, "#f5c518");
-  x.strokeStyle = grad; x.lineWidth = 2.5; x.beginPath();
+  grad.addColorStop(0, "#8b7cff"); grad.addColorStop(1, "#4c8dff");
+  // jemná plocha pod křivkou
+  const fill = x.createLinearGradient(0, 0, 0, H);
+  fill.addColorStop(0, "rgba(76,141,255,.22)"); fill.addColorStop(1, "rgba(76,141,255,0)");
+  x.beginPath();
+  pts.forEach((p, i) => (i ? x.lineTo(X(i), Y(p.v)) : x.moveTo(X(i), Y(p.v))));
+  x.lineTo(X(pts.length - 1), H - pad); x.lineTo(X(0), H - pad); x.closePath();
+  x.fillStyle = fill; x.fill();
+  x.strokeStyle = grad; x.lineWidth = 2.5; x.lineJoin = "round"; x.beginPath();
   pts.forEach((p, i) => (i ? x.lineTo(X(i), Y(p.v)) : x.moveTo(X(i), Y(p.v))));
   x.stroke();
-  x.fillStyle = "#f5c518";
-  pts.forEach((p, i) => { x.beginPath(); x.arc(X(i), Y(p.v), 3.2, 0, 7); x.fill(); });
+  // zvýrazněný poslední bod
+  pts.forEach((p, i) => {
+    const lastOne = i === pts.length - 1;
+    x.beginPath(); x.arc(X(i), Y(p.v), lastOne ? 4.5 : 3, 0, 7);
+    x.fillStyle = lastOne ? "#4c8dff" : "rgba(255,255,255,.35)"; x.fill();
+    if (lastOne) { x.strokeStyle = "#000"; x.lineWidth = 2; x.stroke(); }
+  });
 }
 
 // ---------- export / import ----------
