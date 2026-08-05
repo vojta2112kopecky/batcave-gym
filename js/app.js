@@ -372,29 +372,37 @@ function viewReady() {
 // ---------- trénink ----------
 function head(ex) {
   const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
-  const dots = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
+  const cells = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
   return `<div class="topbar"><button class="back" onclick="abortWorkout()">${I.close()}</button></div>
   <div class="ex-head">
     <div class="ex-name">${esc(ex.name)}</div>
-    <div class="setdots">${dots}</div>
-    <div class="ex-set">${sp.type === "prep" ? "Přípravný" : "Pracovní"}${sp.bonus ? " +" : ""} <span>· cíl ${sp.from}–${sp.to} op.</span></div>
+    <div class="setdots">${cells}</div>
+    <div class="ex-set">${sp.type === "prep" ? "Přípravný" : "Pracovní"}${sp.bonus ? " +" : ""}</div>
   </div>`;
 }
+// stabilní „náhodné" opakování, když z minula žádné číslo není
+function seededReps(exId, i, from, to) {
+  const s = exId + ":" + i;
+  let h = 2166136261;
+  for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); }
+  return from + (Math.abs(h) % (to - from + 1));
+}
+// vlevo minule, vpravo plán
 function statsBlock(ex, i) {
-  const ls = lastSet(ex.id, i), p = progression(ex, i);
-  const pred = `<div class="stat ${p.state}">
-      <div class="k">Predikce</div>
+  const ls = lastSet(ex.id, i), sp = setSpec(ex, i), p = progression(ex, i);
+  const prevR = ls ? ls.r : seededReps(ex.id, i, sp.from, sp.to);
+  const prevW = ls ? ls.w : (sp.kg ?? p.w);
+  return `<div class="stats">
+    <div class="stat ${ls ? "" : "ghost"}">
+      <div class="k">Minule</div>
+      <div class="v">${prevR} op.</div>
+      <div class="v">${fmtW(prevW)} kg</div>
+    </div>
+    <div class="stat ${p.state}">
+      <div class="k">Plán</div>
       <div class="v">${p.r} op.</div>
       <div class="v">${fmtW(p.w)} kg</div>
-    </div>`;
-  if (!ls) {
-    return `<div class="stats one">
-      <div class="stat start"><div class="k">Plán</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div>
-    </div>`;
-  }
-  return `<div class="stats">
-    <div class="stat"><div class="k">Minule</div><div class="v">${ls.r} op.</div><div class="v">${fmtW(ls.w)} kg</div></div>
-    ${pred}
+    </div>
   </div>`;
 }
 function viewWork() {
@@ -444,21 +452,21 @@ function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rV
 
 function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
-  return `<div class="screen">
-    ${head(ex)}
+  const p = progression(ex, nextIdx);
+  return `<div class="screen rest-screen">
     <div class="timer-wrap">
       <div class="timer rest" id="restTimer">--:--</div>
       <div class="timer-label">${I.clock()}Rest</div>
       <div class="rest-bar"><i id="restBar"></i></div>
     </div>
-    ${statsBlock(ex, nextIdx)}
     <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
-    <div class="btn-row">
-      <button class="btn btn-2" onclick="adjustRest(-30)">${I.minus()}30 s</button>
-      <button class="btn btn-2" onclick="adjustRest(30)">${I.plus()}30 s</button>
+    <div class="next-wrap">
+      <div class="next-k">Další</div>
+      <div class="next-box">
+        <div class="next-name">${esc(ex.name)}</div>
+        <div class="next-nums"><b>${fmtW(p.w)} kg</b><span>·</span><b>${p.r} op.</b></div>
+      </div>
     </div>
-    <div class="btn-row"><button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit poslední set</button></div>
-    ${SpotifyUI.bar()}
   </div>`;
 }
 function viewRpe() {

@@ -164,11 +164,16 @@ h2 svg.ico { width: 14px; height: 14px; }
 .ex-set .type { color: var(--dim); }
 .ex-target { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
-.setdots { display: flex; justify-content: center; gap: 5px; margin: 11px 0 3px; }
-.setdots i { width: 24px; height: 3px; border-radius: 2px; background: var(--s3); display: block; transition: background .2s ease; }
-.setdots i.done { background: var(--ok); }
-.setdots i.cur { background: var(--accent); box-shadow: 0 0 10px rgba(76, 141, 255, .6); }
-.setdots i.prep { opacity: .5; }
+/* políčka setů */
+.setdots { display: flex; justify-content: center; gap: 5px; margin: 12px 0 8px; }
+.setdots i {
+  width: 30px; height: 16px; border-radius: 6px; display: block;
+  background: var(--s2); border: 1px solid var(--line);
+  transition: background .2s ease, border-color .2s ease;
+}
+.setdots i.done { background: rgba(48, 209, 88, .3); border-color: rgba(48, 209, 88, .55); }
+.setdots i.cur { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 14px rgba(76, 141, 255, .55); }
+.setdots i.prep { opacity: .62; }
 
 /* ---- LET'S GET IT ---- */
 .ready {
@@ -249,6 +254,28 @@ h2 svg.ico { width: 14px; height: 14px; }
 .stat.down .k, .stat.down .v { color: #c2baff; }
 .stat.down .v + .v { color: #9d92e6; }
 .stat.start { border-color: var(--line2); }
+/* minule bez záznamu – tlumeně */
+.stat.ghost .v { color: var(--muted); }
+.stat.ghost .v + .v { color: var(--dim); }
+
+/* ---- rest: countdown, bar, tlačítko, další ---- */
+.rest-screen { justify-content: center; padding-top: 40px; }
+.next-wrap { margin-top: 34px; }
+.next-k {
+  text-align: center; color: var(--dim); font-size: 11px; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase; margin-bottom: 9px;
+}
+.next-box {
+  background: var(--s1); border: 1px solid var(--line); border-radius: 16px;
+  padding: 15px 16px; text-align: center;
+}
+.next-name { font-size: 15px; font-weight: 800; letter-spacing: -.015em; line-height: 1.25; }
+.next-nums {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.next-nums b { color: var(--accent); font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+.next-nums span { color: var(--dim); }
 
 /* ---- chipy ---- */
 .chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 14px 0; }
@@ -369,6 +396,11 @@ table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant
 .sp-ctrl button.main { background: var(--s2); color: var(--text); width: 48px; height: 48px; }
 .sp-ctrl button.main svg.ico { width: 20px; height: 20px; }
 .sp-ctrl button:active { color: #1db954; transform: scale(.88); }
+.sp-connect {
+  width: auto !important; height: auto !important; border-radius: 999px !important;
+  padding: 11px 20px !important; background: #1db954 !important; color: #04140a !important;
+  font-family: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: .02em;
+}
 
 /* ---- cloud sync ---- */
 .sync-state { font-weight: 700; }

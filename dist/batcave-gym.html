@@ -184,11 +184,16 @@ h2 svg.ico { width: 14px; height: 14px; }
 .ex-set .type { color: var(--dim); }
 .ex-target { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
-.setdots { display: flex; justify-content: center; gap: 5px; margin: 11px 0 3px; }
-.setdots i { width: 24px; height: 3px; border-radius: 2px; background: var(--s3); display: block; transition: background .2s ease; }
-.setdots i.done { background: var(--ok); }
-.setdots i.cur { background: var(--accent); box-shadow: 0 0 10px rgba(76, 141, 255, .6); }
-.setdots i.prep { opacity: .5; }
+/* políčka setů */
+.setdots { display: flex; justify-content: center; gap: 5px; margin: 12px 0 8px; }
+.setdots i {
+  width: 30px; height: 16px; border-radius: 6px; display: block;
+  background: var(--s2); border: 1px solid var(--line);
+  transition: background .2s ease, border-color .2s ease;
+}
+.setdots i.done { background: rgba(48, 209, 88, .3); border-color: rgba(48, 209, 88, .55); }
+.setdots i.cur { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 14px rgba(76, 141, 255, .55); }
+.setdots i.prep { opacity: .62; }
 
 /* ---- LET'S GET IT ---- */
 .ready {
@@ -269,6 +274,28 @@ h2 svg.ico { width: 14px; height: 14px; }
 .stat.down .k, .stat.down .v { color: #c2baff; }
 .stat.down .v + .v { color: #9d92e6; }
 .stat.start { border-color: var(--line2); }
+/* minule bez záznamu – tlumeně */
+.stat.ghost .v { color: var(--muted); }
+.stat.ghost .v + .v { color: var(--dim); }
+
+/* ---- rest: countdown, bar, tlačítko, další ---- */
+.rest-screen { justify-content: center; padding-top: 40px; }
+.next-wrap { margin-top: 34px; }
+.next-k {
+  text-align: center; color: var(--dim); font-size: 11px; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase; margin-bottom: 9px;
+}
+.next-box {
+  background: var(--s1); border: 1px solid var(--line); border-radius: 16px;
+  padding: 15px 16px; text-align: center;
+}
+.next-name { font-size: 15px; font-weight: 800; letter-spacing: -.015em; line-height: 1.25; }
+.next-nums {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.next-nums b { color: var(--accent); font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+.next-nums span { color: var(--dim); }
 
 /* ---- chipy ---- */
 .chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 14px 0; }
@@ -389,6 +416,11 @@ table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant
 .sp-ctrl button.main { background: var(--s2); color: var(--text); width: 48px; height: 48px; }
 .sp-ctrl button.main svg.ico { width: 20px; height: 20px; }
 .sp-ctrl button:active { color: #1db954; transform: scale(.88); }
+.sp-connect {
+  width: auto !important; height: auto !important; border-radius: 999px !important;
+  padding: 11px 20px !important; background: #1db954 !important; color: #04140a !important;
+  font-family: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: .02em;
+}
 
 /* ---- cloud sync ---- */
 .sync-state { font-weight: 700; }
@@ -738,20 +770,122 @@ const I = {
 </script>
   <script>
 // ============================================================
-// SPOTIFY – ovládá Spotify desktop app na Macu (server.py → AppleScript).
-// Sbalené = jen logo. Rozbalené = celý playbar. Stav se pamatuje.
-// Na webové verzi (GitHub Pages) most neexistuje, lišta se nezobrazí.
+// SPOTIFY – dva režimy, lišta je vidět vždycky:
+//  1) BRIDGE  – na Macu přes server.py → AppleScript (nic se nenastavuje)
+//  2) WEB API – všude jinde (GitHub Pages, mobil), přes PKCE
+//     Potřebuje Client ID z developer.spotify.com a Premium účet.
+//     Redirect URI = přesně adresa, na které appka běží.
+// Sbalené = jen logo. Rozbalené = playbar. Stav se pamatuje.
 // ============================================================
 "use strict";
 
 const SPOTIFY_LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname) ||
   /^192\.168\.|^10\./.test(location.hostname);
 
+// ---------- Web API (PKCE) ----------
+const SpotifyWeb = {
+  SCOPES: "user-read-playback-state user-modify-playback-state user-read-currently-playing",
+  token: null,
+  get clientId() { return localStorage.getItem("sp_client_id") || ""; },
+  set clientId(v) { localStorage.setItem("sp_client_id", v); },
+  get refreshToken() { return localStorage.getItem("sp_refresh") || ""; },
+  set refreshToken(v) { v ? localStorage.setItem("sp_refresh", v) : localStorage.removeItem("sp_refresh"); },
+  redirect() { return location.origin + location.pathname; },
+  connected() { return !!this.refreshToken; },
+
+  async init() {
+    const p = new URLSearchParams(location.search);
+    if (p.get("code")) {
+      await this.exchange(p.get("code"));
+      history.replaceState({}, "", this.redirect());
+    }
+    if (this.connected()) await this.refresh();
+  },
+
+  async login() {
+    if (!this.clientId) {
+      const id = prompt(
+        "Spotify Client ID\n\n" +
+        "1) developer.spotify.com/dashboard → Create app\n" +
+        "2) Redirect URI nastav přesně na:\n" + this.redirect() + "\n" +
+        "3) Web API zaškrtni, ulož a zkopíruj Client ID sem:"
+      );
+      if (!id) return;
+      this.clientId = id.trim();
+    }
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const verifier = [...crypto.getRandomValues(new Uint8Array(64))].map((b) => chars[b % chars.length]).join("");
+    localStorage.setItem("sp_verifier", verifier);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+    const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    location.href = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+      client_id: this.clientId, response_type: "code", redirect_uri: this.redirect(),
+      scope: this.SCOPES, code_challenge_method: "S256", code_challenge: challenge,
+    });
+  },
+
+  async exchange(code) {
+    try {
+      const r = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: this.clientId, grant_type: "authorization_code", code,
+          redirect_uri: this.redirect(), code_verifier: localStorage.getItem("sp_verifier") || "",
+        }),
+      }).then((x) => x.json());
+      if (r.access_token) { this.token = r.access_token; if (r.refresh_token) this.refreshToken = r.refresh_token; }
+    } catch {}
+  },
+
+  async refresh() {
+    try {
+      const r = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ client_id: this.clientId, grant_type: "refresh_token", refresh_token: this.refreshToken }),
+      }).then((x) => x.json());
+      if (r.access_token) { this.token = r.access_token; if (r.refresh_token) this.refreshToken = r.refresh_token; }
+    } catch {}
+  },
+
+  async api(method, path) {
+    if (!this.token) return null;
+    const r = await fetch("https://api.spotify.com/v1" + path, { method, headers: { Authorization: "Bearer " + this.token } });
+    if (r.status === 401) { await this.refresh(); return null; }
+    if (r.status === 204 || r.status === 202) return {};
+    try { return await r.json(); } catch { return {}; }
+  },
+
+  async now() {
+    if (!this.connected()) return { ok: false, reason: "Spotify nepřipojeno" };
+    const s = await this.api("GET", "/me/player");
+    if (!s || !s.item) return { ok: false, reason: "nic nehraje" };
+    return { ok: true, track: s.item.name, artist: s.item.artists.map((a) => a.name).join(", "), playing: !!s.is_playing };
+  },
+  async cmd(c) {
+    if (c === "next") await this.api("POST", "/me/player/next");
+    else if (c === "prev") await this.api("POST", "/me/player/previous");
+    else if (c === "toggle") {
+      const s = await this.api("GET", "/me/player");
+      await this.api("PUT", s && s.is_playing ? "/me/player/pause" : "/me/player/play");
+    }
+    return this.now();
+  },
+  disconnect() { this.refreshToken = null; this.token = null; },
+};
+
+// ---------- lišta ----------
 const SpotifyUI = {
-  state: { ok: false, track: "", artist: "", playing: false, reason: "" },
+  mode: SPOTIFY_LOCAL ? "bridge" : "web",
+  state: { ok: false, track: "", artist: "", playing: false, reason: "Spotify nepřipojeno" },
   open: localStorage.getItem("sp_open") === "1",
 
-  async init() { if (SPOTIFY_LOCAL) await this.poll(); },
+  async init() {
+    if (this.mode === "web") await SpotifyWeb.init();
+    await this.poll();
+  },
+
+  connected() { return this.mode === "bridge" || SpotifyWeb.connected(); },
 
   toggleOpen() {
     this.open = !this.open;
@@ -762,9 +896,13 @@ const SpotifyUI = {
 
   async call(cmd) {
     try {
-      const r = await fetch("/api/spotify/" + cmd, { cache: "no-store" });
-      this.state = await r.json();
-    } catch { this.state = { ok: false, reason: "server offline" }; }
+      if (this.mode === "bridge") {
+        const r = await fetch("/api/spotify/" + cmd, { cache: "no-store" });
+        this.state = await r.json();
+      } else {
+        this.state = cmd === "now" ? await SpotifyWeb.now() : await SpotifyWeb.cmd(cmd);
+      }
+    } catch { this.state = { ok: false, reason: "nedostupné" }; }
     this.paint();
   },
 
@@ -785,20 +923,25 @@ const SpotifyUI = {
     return `<b>${esc(this.state.track)}</b><span>${esc(this.state.artist)}</span>`;
   },
 
+  panel() {
+    if (this.mode === "web" && !SpotifyWeb.connected()) {
+      return `<div class="sp-track">Spotify není propojené</div>
+        <div class="sp-ctrl"><button class="sp-connect" onclick="SpotifyWeb.login()">Propojit Spotify</button></div>`;
+    }
+    return `<div class="sp-track" data-sp-track>${this.label()}</div>
+      <div class="sp-ctrl">
+        <button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
+        <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
+        <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
+      </div>`;
+  },
+
   bar() {
-    if (!SPOTIFY_LOCAL) return "";
     return `<div class="spotify ${this.open ? "open" : ""} ${this.state.playing ? "live" : ""}">
       <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">
         ${I.spotify()}<i class="sp-chev">${I.chevronU()}</i>
       </button>
-      <div class="sp-panel">
-        <div class="sp-track" data-sp-track>${this.label()}</div>
-        <div class="sp-ctrl">
-          <button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
-          <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
-          <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
-        </div>
-      </div>
+      <div class="sp-panel"><div>${this.panel()}</div></div>
     </div>`;
   },
 };
@@ -1324,29 +1467,37 @@ function viewReady() {
 // ---------- trénink ----------
 function head(ex) {
   const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
-  const dots = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
+  const cells = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
   return `<div class="topbar"><button class="back" onclick="abortWorkout()">${I.close()}</button></div>
   <div class="ex-head">
     <div class="ex-name">${esc(ex.name)}</div>
-    <div class="setdots">${dots}</div>
-    <div class="ex-set">${sp.type === "prep" ? "Přípravný" : "Pracovní"}${sp.bonus ? " +" : ""} <span>· cíl ${sp.from}–${sp.to} op.</span></div>
+    <div class="setdots">${cells}</div>
+    <div class="ex-set">${sp.type === "prep" ? "Přípravný" : "Pracovní"}${sp.bonus ? " +" : ""}</div>
   </div>`;
 }
+// stabilní „náhodné" opakování, když z minula žádné číslo není
+function seededReps(exId, i, from, to) {
+  const s = exId + ":" + i;
+  let h = 2166136261;
+  for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); }
+  return from + (Math.abs(h) % (to - from + 1));
+}
+// vlevo minule, vpravo plán
 function statsBlock(ex, i) {
-  const ls = lastSet(ex.id, i), p = progression(ex, i);
-  const pred = `<div class="stat ${p.state}">
-      <div class="k">Predikce</div>
+  const ls = lastSet(ex.id, i), sp = setSpec(ex, i), p = progression(ex, i);
+  const prevR = ls ? ls.r : seededReps(ex.id, i, sp.from, sp.to);
+  const prevW = ls ? ls.w : (sp.kg ?? p.w);
+  return `<div class="stats">
+    <div class="stat ${ls ? "" : "ghost"}">
+      <div class="k">Minule</div>
+      <div class="v">${prevR} op.</div>
+      <div class="v">${fmtW(prevW)} kg</div>
+    </div>
+    <div class="stat ${p.state}">
+      <div class="k">Plán</div>
       <div class="v">${p.r} op.</div>
       <div class="v">${fmtW(p.w)} kg</div>
-    </div>`;
-  if (!ls) {
-    return `<div class="stats one">
-      <div class="stat start"><div class="k">Plán</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div>
-    </div>`;
-  }
-  return `<div class="stats">
-    <div class="stat"><div class="k">Minule</div><div class="v">${ls.r} op.</div><div class="v">${fmtW(ls.w)} kg</div></div>
-    ${pred}
+    </div>
   </div>`;
 }
 function viewWork() {
@@ -1396,21 +1547,21 @@ function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rV
 
 function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
-  return `<div class="screen">
-    ${head(ex)}
+  const p = progression(ex, nextIdx);
+  return `<div class="screen rest-screen">
     <div class="timer-wrap">
       <div class="timer rest" id="restTimer">--:--</div>
       <div class="timer-label">${I.clock()}Rest</div>
       <div class="rest-bar"><i id="restBar"></i></div>
     </div>
-    ${statsBlock(ex, nextIdx)}
     <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
-    <div class="btn-row">
-      <button class="btn btn-2" onclick="adjustRest(-30)">${I.minus()}30 s</button>
-      <button class="btn btn-2" onclick="adjustRest(30)">${I.plus()}30 s</button>
+    <div class="next-wrap">
+      <div class="next-k">Další</div>
+      <div class="next-box">
+        <div class="next-name">${esc(ex.name)}</div>
+        <div class="next-nums"><b>${fmtW(p.w)} kg</b><span>·</span><b>${p.r} op.</b></div>
+      </div>
     </div>
-    <div class="btn-row"><button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit poslední set</button></div>
-    ${SpotifyUI.bar()}
   </div>`;
 }
 function viewRpe() {
