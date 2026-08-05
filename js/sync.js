@@ -53,27 +53,50 @@ const Sync = {
   },
 
   payload() {
-    return { v: 1, updated: new Date().toISOString(), history, overrides, planVersion: plan.version };
+    return {
+      v: 2, updated: new Date().toISOString(), planVersion: plan.version,
+      history, overrides, targets,
+      session,                       // i rozdělaný trénink, ať se nic neztratí
+    };
   },
 
   queue() {
     if (!this.enabled()) return;
+    localStorage.setItem("sync_dirty", "1");
     clearTimeout(this._t);
-    this._t = setTimeout(() => this.push(), 1500);
+    this._t = setTimeout(() => this.push(true), 3000);
   },
 
-  async push() {
+  _lastPush: 0,
+  _fails: 0,
+
+  async push(force) {
     if (!this.enabled()) return;
+    // cloud má rate limit – když se pouští moc rychle po sobě, jen to zařaď
+    if (!force && Date.now() - this._lastPush < 5000) { this.queue(); return; }
+    clearTimeout(this._t);
+    this._lastPush = Date.now();
     this.status = "busy"; paintSync();
+    const body = this.payload();
     try {
       const r = await fetch(this.url(), {
-        method: "PUT",
+        method: "PUT", keepalive: true,
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(this.payload()),
+        body: JSON.stringify(body),
       });
       if (!r.ok) throw new Error("HTTP " + r.status);
+      localStorage.setItem("sync_local_updated", body.updated);
+      localStorage.setItem("sync_dirty", "0");
+      this._fails = 0;
       this.done("ok", "uloženo");
-    } catch (e) { this.done("err", e.message); }
+    } catch (e) {
+      localStorage.setItem("sync_dirty", "1");
+      this._fails++;
+      this.done("err", e.message);
+      // signál v posilovně nebo rate limit → zkoušej dál, s narůstající pauzou
+      clearTimeout(this._retry);
+      this._retry = setTimeout(() => this.push(true), Math.min(60000, 8000 * this._fails));
+    }
   },
 
   async pull(silent) {
@@ -104,10 +127,26 @@ const Sync = {
       history = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
       localStorage.setItem("history", JSON.stringify(history));
     }
-    if (data.overrides && JSON.stringify(data.overrides) !== JSON.stringify(overrides)) {
+
+    // cíle vah a nastavení: novější zápis vyhrává
+    const mine = localStorage.getItem("sync_local_updated") || "";
+    const remoteNewer = (data.updated || "") > mine;
+    if (remoteNewer && data.targets && JSON.stringify(data.targets) !== JSON.stringify(targets)) {
+      targets = data.targets;
+      localStorage.setItem("targets", JSON.stringify(targets));
+      changed = true;
+    }
+    if (remoteNewer && data.overrides && JSON.stringify(data.overrides) !== JSON.stringify(overrides)) {
       overrides = data.overrides;
       localStorage.setItem("overrides", JSON.stringify(overrides));
       applyOverrides();
+      changed = true;
+    }
+
+    // rozdělaný trénink převezmi jen když tady žádný neběží a je z dneška
+    if (!session && data.session && data.session.date === today() && data.session.phase !== "summary") {
+      session = data.session;
+      localStorage.setItem("session", JSON.stringify(session));
       changed = true;
     }
     return changed;
@@ -131,6 +170,14 @@ const Sync = {
     return mins < 1 ? "právě teď" : mins < 60 ? `před ${mins} min` : d.toLocaleString("cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
   },
 };
+
+// když appku zavřu nebo přepnu jinam, dorovnej to hned
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && Sync.enabled() && localStorage.getItem("sync_dirty") === "1") Sync.push(true);
+});
+window.addEventListener("pagehide", () => {
+  if (Sync.enabled() && localStorage.getItem("sync_dirty") === "1") Sync.push(true);
+});
 
 function paintSync() {
   const el = document.getElementById("syncState");

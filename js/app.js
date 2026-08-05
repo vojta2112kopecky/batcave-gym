@@ -12,6 +12,7 @@ const DB = {
 let plan = DB.get("plan", null);
 if (!plan || (plan.version || 0) < DEFAULT_PLAN.version) { plan = JSON.parse(JSON.stringify(DEFAULT_PLAN)); DB.set("plan", plan); }
 let overrides = DB.get("overrides", {});   // exId -> {step, rest, restPrep}
+let targets = DB.get("targets", {});       // "exId:setIndex" -> kg (navýšeno po překonání rekordu)
 let history = DB.get("history", []);
 let session = DB.get("session", null);
 let tab = "workout";
@@ -63,40 +64,28 @@ const topW = (sets) => Math.max(...workSets(sets).map((s) => s.w));
 
 // ============================================================
 // PROGRESSIVE OVERLOAD
-// Kilo se přidá až po X trénincích po sobě, kdy jsi na stejné váze
-// dal horní hranici opakování a nebylo to na krev (RPE ≤ 8).
-// Dvakrát po sobě pod spodní hranicí → ubíráme.
+// Cílový rozsah opakování je z plánu Trenér Petr (4–6, 8–10, 10–15, 15–25).
+// Když ho překonáš, appka nabídne navýšení a nová váha se uloží jako cíl
+// pro tenhle set – natrvalo a do cloudu.
 // ============================================================
-const progressAfter = () => plan.progressAfter || 2;
+const tKey = (exId, i) => `${exId}:${i}`;
 
-function progression(ex, i) {
+// váha, kterou má plán ukazovat: navýšený cíl → co jsem dal minule → z plánu
+function planFor(ex, i) {
   const sp = setSpec(ex, i);
-  const startKg = sp.kg ?? ex.defaultWeight ?? 0;
-  const pts = exHistory(ex.id)
-    .map((e) => ({ s: e.sets[Math.min(i, e.sets.length - 1)], rpe: e.rpe }))
-    .filter((p) => p.s);
+  const t = targets[tKey(ex.id, i)];
+  const ls = lastSet(ex.id, i);
+  const w = t != null ? t : ls ? ls.w : sp.kg ?? 0;
+  let state = "";
+  if (t != null && ls && t > ls.w) state = "up";        // čeká na tebe navýšení
+  else if (ls && ls.r < sp.from) state = "down";        // minule pod cílem
+  return { w, from: sp.from, to: sp.to, type: sp.type, state, raised: t != null };
+}
 
-  if (!pts.length) return { w: startKg, r: sp.from, state: "start", why: "výchozí váha z plánu" };
-
-  const last = pts[pts.length - 1];
-  let streak = 0;
-  for (let k = pts.length - 1; k >= 0; k--) {
-    const p = pts[k];
-    if (p.s.w === last.s.w && p.s.r >= sp.to && (p.rpe == null || p.rpe <= 8)) streak++;
-    else break;
-  }
-  const need = progressAfter();
-  if (streak >= need) {
-    return { w: round2(last.s.w + ex.step), r: sp.from, state: "up",
-      why: `${streak}× po sobě ${sp.to} opakování → +${fmtW(ex.step)} kg` };
-  }
-  const tail = pts.slice(-2);
-  if (tail.length === 2 && tail.every((p) => p.s.w === last.s.w && p.s.r < sp.from)) {
-    return { w: Math.max(ex.step, round2(last.s.w - ex.step)), r: sp.from, state: "down",
-      why: "dvakrát po sobě pod cílem → uber a vyjeď to znovu" };
-  }
-  return { w: last.s.w, r: Math.min(last.s.r + 1, sp.to), state: "hold",
-    why: streak ? `ještě ${need - streak}× ${sp.to} opakování a přidáme kilo` : `drž ${fmtW(last.s.w)} kg a přidej opakování` };
+// o kolik jde přidat – čtyři hodnoty nejblíž kroku daného cviku
+function incOptions(ex) {
+  const base = [...new Set([ex.step, round2(ex.step * 2), 1, 2, 2.5, 5, 10])].filter((v) => v >= 0.5);
+  return base.sort((a, b) => Math.abs(a - ex.step) - Math.abs(b - ex.step)).slice(0, 4).sort((a, b) => a - b);
 }
 
 const prWeight = (id) => { let p = 0; for (const e of exHistory(id)) for (const s of e.sets) if (s.w > p) p = s.w; return p; };
@@ -149,6 +138,9 @@ const curW = () => wo(session.workoutId);
 const curEx = () => curW().exercises[session.exIndex];
 const restFor = (ex, i) => (setSpec(ex, i).type === "prep" ? ex.restPrep || 90 : ex.rest || 120);
 
+// uloží do cloudu hned, ne až po prodlevě (po každém setu)
+function pushNow() { if (typeof Sync !== "undefined" && Sync.enabled()) Sync.push(); }
+
 // zelené bliknutí, pak akce
 function flashOk(el, fn) {
   if (!el || el.dataset.busy) return fn && fn();
@@ -159,23 +151,49 @@ function flashOk(el, fn) {
 }
 function finishSet(el) {
   flashOk(el, () => {
-    const ex = curEx(), p = progression(ex, session.setIndex);
+    const ex = curEx(), p = planFor(ex, session.setIndex);
     session.phase = "log";
     session.pendingW = session.pendingW ?? p.w;
-    session.pendingR = session.pendingR ?? p.r;
+    session.pendingR = session.pendingR ?? p.from;
     DB.set("session", session); render();
   });
 }
 function confirmSet(el) {
   flashOk(el, () => {
-    const ex = curEx();
+    const ex = curEx(), i = session.setIndex, sp = setSpec(ex, i);
+    const w = session.pendingW, r = session.pendingR;
     const e = (session.entries[ex.id] = session.entries[ex.id] || { id: ex.id, name: ex.name, sets: [], rpe: null });
-    e.sets.push({ w: session.pendingW, r: session.pendingR, t: setSpec(ex, session.setIndex).type });
+    e.sets.push({ w, r, t: sp.type });
     session.pendingW = null; session.pendingR = null;
-    if (session.setIndex >= exSets(ex).length - 1) session.phase = "rpe";
-    else startRest(restFor(ex, session.setIndex + 1));
-    DB.set("session", session); render();
+    // překonal jsi horní hranici rozsahu → nabídnout navýšení
+    if (r > sp.to) {
+      session.phase = "record";
+      session.record = { exId: ex.id, i, w, r, from: sp.from, to: sp.to, name: ex.name };
+      DB.set("session", session); pushNow(); return render();
+    }
+    advanceAfterSet();
   });
+}
+function advanceAfterSet() {
+  const ex = curEx();
+  if (session.setIndex >= exSets(ex).length - 1) session.phase = "rpe";
+  else startRest(restFor(ex, session.setIndex + 1));
+  session.record = null;
+  DB.set("session", session); pushNow(); render();
+}
+// navýšení se uloží jako cíl pro tenhle set – natrvalo a do cloudu
+function raiseTarget(inc) {
+  const rec = session.record;
+  if (rec) {
+    targets[tKey(rec.exId, rec.i)] = round2(rec.w + inc);
+    DB.set("targets", targets);
+  }
+  advanceAfterSet();
+}
+function keepTarget() {
+  const rec = session.record;
+  if (rec) { targets[tKey(rec.exId, rec.i)] = rec.w; DB.set("targets", targets); }
+  advanceAfterSet();
 }
 function startRest(sec) { session.phase = "rest"; session.restTotal = sec; session.restEnd = Date.now() + sec * 1000; session._beeped = {}; }
 function adjustRest(d) { session.restEnd += d * 1000; session.restTotal = Math.max(1, session.restTotal + d); DB.set("session", session); }
@@ -262,6 +280,7 @@ function render() {
   else if (session.phase === "work") html = viewWork();
   else if (session.phase === "log") html = viewLog();
   else if (session.phase === "rest") html = viewRest();
+  else if (session.phase === "record") html = viewRecord();
   else if (session.phase === "rpe") html = viewRpe();
   else html = viewSummary();
   $("#app").innerHTML = html + (session && session.phase === "ready" ? "" : viewNav());
@@ -373,7 +392,10 @@ function viewReady() {
 function head(ex) {
   const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
   const cells = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
-  return `<div class="topbar"><button class="back" onclick="abortWorkout()">${I.close()}</button></div>
+  return `<div class="topbar">
+    <button class="back" onclick="abortWorkout()">${I.close()}</button>
+    ${Sync.enabled() ? `<span class="save-pip"><i id="syncDot" class="sync-dot ${Sync.status}"></i><span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></span>` : ""}
+  </div>
   <div class="ex-head">
     <div class="ex-name">${esc(ex.name)}</div>
     <div class="setdots">${cells}</div>
@@ -387,11 +409,11 @@ function seededReps(exId, i, from, to) {
   for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); }
   return from + (Math.abs(h) % (to - from + 1));
 }
-// vlevo minule, vpravo plán
+// vlevo minule, vpravo plán s cílovým rozsahem opakování
 function statsBlock(ex, i) {
-  const ls = lastSet(ex.id, i), sp = setSpec(ex, i), p = progression(ex, i);
+  const ls = lastSet(ex.id, i), sp = setSpec(ex, i), p = planFor(ex, i);
   const prevR = ls ? ls.r : seededReps(ex.id, i, sp.from, sp.to);
-  const prevW = ls ? ls.w : (sp.kg ?? p.w);
+  const prevW = ls ? ls.w : sp.kg ?? p.w;
   return `<div class="stats">
     <div class="stat ${ls ? "" : "ghost"}">
       <div class="k">Minule</div>
@@ -400,9 +422,26 @@ function statsBlock(ex, i) {
     </div>
     <div class="stat ${p.state}">
       <div class="k">Plán</div>
-      <div class="v">${p.r} op.</div>
+      <div class="v">${p.from}–${p.to} op.</div>
       <div class="v">${fmtW(p.w)} kg</div>
     </div>
+  </div>`;
+}
+function viewRecord() {
+  const r = session.record, ex = curEx();
+  const opts = incOptions(ex).map((v) => `<button class="rec-opt" onclick="raiseTarget(${v})">
+      <b>+${fmtW(v)} kg</b><span>${fmtW(round2(r.w + v))} kg</span></button>`).join("");
+  return `<div class="screen record-screen">
+    <div class="rec-ico">${I.trophy()}</div>
+    <div class="rec-title">Gratuluju!</div>
+    <div class="rec-sub">Beatnul jsi rekord, je čas navýšit</div>
+    <div class="rec-box">
+      <div class="rec-ex">${esc(r.name)}</div>
+      <div class="rec-nums"><b>${r.r} opakování</b> při cíli ${r.from}–${r.to} · ${fmtW(r.w)} kg</div>
+    </div>
+    <div class="rec-k">O kolik příště přidáme?</div>
+    <div class="rec-grid">${opts}</div>
+    <button class="btn btn-3" onclick="keepTarget()">Nechat ${fmtW(r.w)} kg</button>
   </div>`;
 }
 function viewWork() {
@@ -452,7 +491,7 @@ function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rV
 
 function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
-  const p = progression(ex, nextIdx);
+  const p = planFor(ex, nextIdx);
   return `<div class="screen rest-screen">
     <div class="timer-wrap">
       <div class="timer rest" id="restTimer">--:--</div>
@@ -464,7 +503,7 @@ function viewRest() {
       <div class="next-k">Další</div>
       <div class="next-box">
         <div class="next-name">${esc(ex.name)}</div>
-        <div class="next-nums"><b>${fmtW(p.w)} kg</b><span>·</span><b>${p.r} op.</b></div>
+        <div class="next-nums"><b>${fmtW(p.w)} kg</b><span>·</span><b>${p.from}–${p.to} op.</b></div>
       </div>
     </div>
   </div>`;
@@ -509,10 +548,20 @@ function viewSummary() {
 function recos() {
   const out = [];
   for (const ex of allEx()) {
-    if (!exHistory(ex.id).length) continue;
-    const i = ex.sets.length - 1, p = progression(ex, i);
-    if (p.state === "hold") continue;
-    out.push({ ex, p, prio: p.state === "up" ? 0 : p.state === "down" ? 1 : 2 });
+    const h = exHistory(ex.id);
+    if (!h.length) continue;
+    for (let i = 0; i < ex.sets.length; i++) {
+      const p = planFor(ex, i), ls = lastSet(ex.id, i);
+      if (!ls) continue;
+      if (p.state === "up") {
+        out.push({ ex, p, prio: 0, why: `set ${i + 1}: navýšeno na ${fmtW(p.w)} kg – příště to vyjeď` });
+        break;
+      }
+      if (p.state === "down") {
+        out.push({ ex, p, prio: 1, why: `set ${i + 1}: minule ${ls.r} op. při cíli ${p.from}–${p.to} – drž ${fmtW(p.w)} kg` });
+        break;
+      }
+    }
   }
   return out.sort((a, b) => a.prio - b.prio);
 }
@@ -530,7 +579,7 @@ function viewDash() {
   const ws = weekStats(), rc = recos();
   const cards = allEx().map((e) => {
     const h = exHistory(e.id), last = h.length ? h[h.length - 1] : null;
-    const p = progression(e, e.sets.length - 1);
+    const p = planFor(e, e.sets.length - 1);
     return `<div class="card" onclick="openEx('${e.id}')">
       <div class="body">
         <div class="title">${esc(e.name)}</div>
@@ -552,10 +601,10 @@ function viewDash() {
     </div>
     <h2>${I.bulb()}Doporučení</h2>
     ${rc.length ? rc.map((r) => `<div class="card" onclick="openEx('${r.ex.id}')">
-        <div class="dot ${r.p.state === "up" ? "up" : r.p.state === "down" ? "down" : "hold"}"></div>
+        <div class="dot ${r.p.state}"></div>
         <div class="body">
           <div class="title" style="font-size:14px">${esc(r.ex.name)}</div>
-          <div class="meta">${esc(r.p.why)} · ${fmtW(r.p.w)} kg</div>
+          <div class="meta">${esc(r.why)}</div>
         </div><div class="go">${I.chevronR()}</div></div>`).join("")
       : `<div class="muted">Odcvič pár tréninků a začnu ti radit, kdy přidat a kdy podržet váhu.</div>`}
     <h2>${I.dumbbell()}Cviky</h2>
@@ -571,7 +620,7 @@ function openEx(id) { dashEx = id; render(); }
 function viewExDetail(id) {
   const ex = allEx().find((e) => e.id === id);
   const h = exHistory(id);
-  const p = ex ? progression(ex, ex.sets.length - 1) : null;
+  const p = ex ? planFor(ex, ex.sets.length - 1) : null;
   const rows = [...h].reverse().map((e) => `<tr><td>${fmtDate(e.date)}</td>
     <td>${e.sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ")}</td><td>${e.rpe ?? "–"}</td></tr>`).join("");
   return `<div class="screen">
@@ -581,8 +630,7 @@ function viewExDetail(id) {
       <div class="ex-target">PR <span class="pr">${fmtW(prWeight(id))} kg</span> · ${h.length} ${plural(h.length, "záznam", "záznamy", "záznamů")}</div>
     </div>
     ${p ? `<div class="stats one"><div class="stat ${p.state}">
-      <div class="k">Příště</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div></div>
-      <div class="center muted">${esc(p.why)}</div>` : ""}
+      <div class="k">Příště</div><div class="v">${p.from}–${p.to} op.</div><div class="v">${fmtW(p.w)} kg</div></div></div>` : ""}
     <h2>${I.chart()}Progres váhy (top set)</h2>
     <canvas class="chart" id="chartW" width="440" height="170"></canvas>
     <h2>${I.history()}Historie</h2>
@@ -725,5 +773,10 @@ window.addEventListener("load", () => {
   SpotifyUI.init();
   if (session) keepAwake(true);
   render();
-  if (Sync.enabled()) Sync.pull(true);
+  if (Sync.enabled()) {
+    Sync.pull(true).then(() => {
+      // minule se nestihlo uložit (výpadek signálu) → dorovnej to teď
+      if (localStorage.getItem("sync_dirty") === "1") Sync.push(true);
+    });
+  }
 });
