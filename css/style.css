@@ -152,9 +152,38 @@ h2 svg.ico { width: 14px; height: 14px; }
 .btn-3:active { color: var(--muted); }
 .btn-row { display: flex; gap: 8px; margin-top: 8px; }
 .btn-row .btn { flex: 1; }
-.back { position: absolute; top: 6px; left: 4px; background: none; border: none; color: var(--dim); cursor: pointer; padding: 5px; opacity: .55; }
-.back svg.ico { width: 16px; height: 16px; }
-.topbar { position: relative; min-height: 6px; }
+/* křížek má pořádnou klikací plochu, i když je vizuálně malý */
+.back {
+  position: absolute; top: -2px; left: -6px; background: none; border: none;
+  color: var(--dim); cursor: pointer; opacity: .55;
+  width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
+  transition: opacity .15s ease;
+}
+.back:hover { opacity: 1; }
+.back:active { opacity: 1; transform: scale(.9); }
+.back svg.ico { width: 17px; height: 17px; }
+.topbar { position: relative; min-height: 44px; }
+
+/* ---- spodní dok: tlačítka nikdy neposkočí ---- */
+.dock {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  max-width: 480px; margin: 0 auto;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, #000 26%);
+  pointer-events: none;
+}
+.dock > * { pointer-events: auto; }
+.dock .spotify { margin: 0; }
+.dock-extra { display: flex; gap: 6px; justify-content: center; }
+.dock-extra .btn { flex: 1; padding: 9px 4px; }
+/* obsah tréninku se vejde nad dok a je vycentrovaný */
+#app.in-workout { padding-bottom: 0; }
+.screen.wk {
+  min-height: 100dvh; display: flex; flex-direction: column; justify-content: center;
+  padding: 12px 16px calc(200px + env(safe-area-inset-bottom));
+}
+.screen.wk .topbar { position: absolute; top: 8px; left: 16px; right: 16px; }
 
 /* ---- hlavička cviku ---- */
 .ex-head { text-align: center; margin: 12px 0 4px; }
@@ -283,12 +312,9 @@ h2 svg.ico { width: 14px; height: 14px; }
 }
 .timer.rest.paused { color: var(--muted); text-shadow: none; }
 
-/* ---- indikátor ukládání ---- */
-.save-pip {
-  position: absolute; top: 8px; right: 6px; display: flex; align-items: center; gap: 5px;
-  font-size: 10.5px; font-weight: 700; opacity: .75;
-}
-.save-pip .sync-dot { margin: 0; }
+/* ---- rest: obsah drží místo, ať tlačítka nikam neskáčou ---- */
+.rest-screen .rest-ctrl { min-height: 46px; }
+.rest-screen .next-wrap { margin-top: 26px; }
 
 /* ---- rekord: čas navýšit ---- */
 .record-screen { justify-content: center; text-align: center; padding-top: 30px; animation: rise .4s cubic-bezier(.22,.9,.3,1); }
@@ -377,6 +403,7 @@ h2 svg.ico { width: 14px; height: 14px; }
 .timer.work { color: var(--text); }
 .timer.rest { color: var(--accent); text-shadow: 0 0 60px rgba(76, 141, 255, .45); }
 .timer.rest.ending { color: var(--alert); text-shadow: 0 0 60px rgba(255, 69, 58, .45); animation: fade .55s infinite alternate; }
+.timer { transition: color .35s ease, text-shadow .35s ease; }
 @keyframes fade { from { opacity: 1; } to { opacity: .45; } }
 .timer-label { color: var(--dim); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; margin-top: 11px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .timer-label svg.ico { width: 13px; height: 13px; }
@@ -514,6 +541,25 @@ table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant
 }
 .stepchip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .stepchip:active { background: var(--s3); }
+
+/* ---- potvrzovací okno ---- */
+.modal-wrap {
+  position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 22px;
+  animation: dim .18s ease;
+}
+.modal {
+  width: 100%; max-width: 340px; background: #10141c; border: 1px solid var(--line2);
+  border-radius: 22px; padding: 22px 18px 16px; text-align: center;
+  animation: rise .24s cubic-bezier(.22,.9,.3,1);
+}
+.m-title { font-size: 18px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+.m-sub { color: var(--muted); font-size: 13px; margin: 8px 0 18px; }
+.m-row { display: flex; gap: 8px; }
+.m-row .btn { flex: 1; padding: 15px 8px; font-size: 15px; }
+.btn-3.danger { color: var(--alert); opacity: .8; margin-top: 6px; }
+.btn-3.danger svg.ico { width: 13px; height: 13px; }
 
 /* ---- ostatní ---- */
 .center { text-align: center; }

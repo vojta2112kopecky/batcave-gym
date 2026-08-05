@@ -203,6 +203,7 @@ function startRest(sec) {
 }
 function adjustRest(d) { session.restEnd += d * 1000; session.restTotal = Math.max(1, session.restTotal + d); DB.set("session", session); }
 // countdown se dá pauznout; čas od začátku pauzy běží dál
+// pauza nesmí překreslit obrazovku – mění se jen pár prvků na místě
 function togglePause() {
   if (session.paused) {
     session.restEnd += Date.now() - session.pausedAt;
@@ -210,7 +211,12 @@ function togglePause() {
   } else {
     session.paused = true; session.pausedAt = Date.now();
   }
-  DB.set("session", session); render();
+  DB.set("session", session);
+  const btn = $("#pauseBtn"), chip = $("#elapsedChip"), t = $("#restTimer"), lbl = $("#restLabel");
+  if (btn) { btn.classList.toggle("on", session.paused); btn.innerHTML = session.paused ? I.play() : I.pause(); }
+  if (chip) chip.classList.toggle("show", session.paused);
+  if (t) t.classList.toggle("paused", session.paused);
+  if (lbl) lbl.textContent = session.paused ? "Pauza" : "Rest";
 }
 function endRest() {
   if (session._afterRpe) session._afterRpe = false;
@@ -255,9 +261,39 @@ function finishWorkout() {
   render();
 }
 function closeSummary() { session = null; DB.set("session", null); render(); }
-function abortWorkout() {
-  if (!confirm("Zrušit rozdělaný trénink? Nic se neuloží.")) return;
-  session = null; DB.set("session", null); keepAwake(false); render();
+
+// ✕ → potvrzení přímo v appce
+function askAbort() { session.ask = true; DB.set("session", session); render(); }
+function closeAsk() { session.ask = false; DB.set("session", session); render(); }
+function viewAsk() {
+  const done = Object.values(session.entries || {}).reduce((a, e) => a + e.sets.length, 0);
+  return `<div class="modal-wrap" onclick="closeAsk()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="m-title">Opravdu chceš ukončit trénink?</div>
+      <div class="m-sub">${done ? `${done} ${plural(done, "série se uloží", "série se uloží", "sérií se uloží")}.` : "Zatím tu nic odcvičeného není."}</div>
+      <div class="m-row">
+        <button class="btn btn-2" onclick="closeAsk()">Ne</button>
+        <button class="btn btn-primary" onclick="endWorkoutEarly()">Ano, ukončit</button>
+      </div>
+      <button class="btn btn-3 danger" onclick="discardWorkout()">${I.close()}Smazat trénink bez uložení</button>
+    </div>
+  </div>`;
+}
+// ukončí trénink, ale co je odcvičené, uloží
+function endWorkoutEarly() {
+  const has = Object.values(session.entries || {}).some((e) => e.sets.length);
+  if (has) {
+    history.push({
+      date: session.date, workoutId: session.workoutId, workoutName: session.workoutName,
+      durationMin: Math.max(1, Math.round((Date.now() - session.startedAt) / 60000)),
+      exercises: Object.values(session.entries).filter((e) => e.sets.length),
+    });
+    DB.set("history", history);
+  }
+  session = null; DB.set("session", null); keepAwake(false); pushNow(); render();
+}
+function discardWorkout() {
+  session = null; DB.set("session", null); keepAwake(false); pushNow(); render();
 }
 function endExercise() {
   const ex = curEx();
@@ -304,7 +340,10 @@ function render() {
   else if (session.phase === "record") html = viewRecord();
   else if (session.phase === "rpe") html = viewRpe();
   else html = viewSummary();
-  $("#app").innerHTML = html + (session && session.phase === "ready" ? "" : viewNav());
+  // během tréninku spodní navigace mizí, dole jsou akční tlačítka
+  const inWorkout = session && tab === "workout" && session.phase !== "summary";
+  $("#app").className = inWorkout ? "in-workout" : "";
+  $("#app").innerHTML = html + (inWorkout ? "" : viewNav()) + (session && session.ask ? viewAsk() : "");
   if (tab === "dash" && dashEx && dashView !== "settings") drawChart("chartW", exHistory(dashEx).map((e) => ({ v: topW(e.sets) })));
   if (typeof paintSync === "function") paintSync();
 }
@@ -400,7 +439,7 @@ function viewReady() {
     </div>`).join("");
 
   return `<div class="ready">
-    <button class="back" onclick="abortWorkout()">${I.close()}</button>
+    <button class="back" onclick="discardWorkout()" aria-label="Zpět">${I.close()}</button>
     <div class="ready-in">
       <div class="ready-title">${esc(w.name)}</div>
       <div class="tree">${tree}</div>
@@ -418,14 +457,20 @@ function wProgress() {
     return `<i class="${cls}">${i < session.exIndex ? I.check() : ""}</i>`;
   }).join("")}</div>`;
 }
+// spodní dok: nahoře drobná tlačítka, pak Spotify, dole hlavní akce – nikdy se nehýbe
+function dock(main, extra) {
+  return `<div class="dock">
+    ${extra ? `<div class="dock-extra">${extra}</div>` : ""}
+    ${SpotifyUI.bar()}
+    ${main}
+  </div>`;
+}
 function head(ex) {
   const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
   const cells = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
   return `<div class="topbar">
-    <button class="back" onclick="abortWorkout()">${I.close()}</button>
-    ${Sync.enabled() ? `<span class="save-pip"><i id="syncDot" class="sync-dot ${Sync.status}"></i><span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></span>` : ""}
+    <button class="back" onclick="askAbort()" aria-label="Ukončit trénink">${I.close()}</button>
   </div>
-  ${wProgress()}
   <div class="ex-head">
     <div class="ex-name">${esc(ex.name)}</div>
     <div class="setdots">${cells}</div>
@@ -461,7 +506,7 @@ function viewRecord() {
   const r = session.record, ex = curEx();
   const opts = incOptions(ex).map((v) => `<button class="rec-opt" onclick="raiseTarget(${v})">
       <b>+${fmtW(v)} kg</b><span>${fmtW(round2(r.w + v))} kg</span></button>`).join("");
-  return `<div class="screen record-screen">
+  return `<div class="screen wk record-screen">
     <div class="rec-ico">${I.trophy()}</div>
     <div class="rec-title">Gratuluju!</div>
     <div class="rec-sub">Beatnul jsi rekord, je čas navýšit</div>
@@ -471,31 +516,30 @@ function viewRecord() {
     </div>
     <div class="rec-k">O kolik příště přidáme?</div>
     <div class="rec-grid">${opts}</div>
-    <button class="btn btn-3" onclick="keepTarget()">Nechat ${fmtW(r.w)} kg</button>
-  </div>`;
+  </div>
+  ${dock("", `<button class="btn btn-3" onclick="keepTarget()">Nechat ${fmtW(r.w)} kg</button>`)}`;
 }
 function viewWork() {
   const ex = curEx(), i = session.setIndex;
   const logged = session.entries[ex.id]?.sets.length || 0;
-  return `<div class="screen">
+  return `<div class="screen wk">
     ${head(ex)}
     ${statsBlock(ex, i)}
     <div class="timer-wrap">
       <div class="timer work" id="workTimer">0:00</div>
       <div class="timer-label">${I.clock()}Work time</div>
     </div>
-    <button class="btn btn-primary" onclick="finishSet(this)">${I.check()}Set hotový</button>
-    <div class="btn-row">
-      ${logged ? `<button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
-      <button class="btn btn-3" onclick="addSet()">${I.plus()}Set navíc</button>
-      <button class="btn btn-3" onclick="endExercise()">${I.skip()}Konec cviku</button>
-    </div>
-    ${SpotifyUI.bar()}
-  </div>`;
+  </div>
+  ${dock(
+    `<button class="btn btn-primary" onclick="finishSet(this)">${I.check()}Set hotový</button>`,
+    `${logged ? `<button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
+     <button class="btn btn-3" onclick="addSet()">${I.plus()}Set navíc</button>
+     <button class="btn btn-3" onclick="endExercise()">${I.skip()}Konec cviku</button>`
+  )}`;
 }
 function viewLog() {
   const ex = curEx();
-  return `<div class="screen">
+  return `<div class="screen wk">
     ${head(ex)}
     <div class="stepper">
       <div class="label">Váha</div>
@@ -513,8 +557,8 @@ function viewLog() {
         <button class="step-btn" onclick="bumpR(1)">${I.plus()}<span>1</span></button>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="confirmSet(this)">${I.check()}Uložit set</button>
-  </div>`;
+  </div>
+  ${dock(`<button class="btn btn-primary" onclick="confirmSet(this)">${I.check()}Uložit set</button>`)}`;
 }
 function bumpW(d) { session.pendingW = Math.max(0, round2(session.pendingW + d * curEx().step)); $("#wVal").innerHTML = `${fmtW(session.pendingW)}<small> kg</small>`; DB.set("session", session); }
 function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rVal").textContent = session.pendingR; DB.set("session", session); }
@@ -522,22 +566,24 @@ function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rV
 function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   const p = planFor(ex, nextIdx);
-  return `<div class="screen rest-screen">
-    ${wProgress()}
+  // políčka cviků jen o velké pauze mezi cviky
+  const between = !!session._afterRpe;
+  return `<div class="screen wk rest-screen">
+    <div class="topbar"><button class="back" onclick="askAbort()" aria-label="Ukončit trénink">${I.close()}</button></div>
+    ${between ? wProgress() : ""}
     <div class="timer-wrap">
       <div class="timer rest ${session.paused ? "paused" : ""}" id="restTimer">--:--</div>
-      <div class="timer-label">${I.clock()}${session.paused ? "Pauza" : "Rest"}</div>
+      <div class="timer-label">${I.clock()}<span id="restLabel">${session.paused ? "Pauza" : "Rest"}</span></div>
       <div class="rest-bar"><i id="restBar"></i></div>
     </div>
     <div class="rest-ctrl">
-      <button class="pause-btn ${session.paused ? "on" : ""}" onclick="togglePause()" aria-label="Pauza">
+      <button class="pause-btn ${session.paused ? "on" : ""}" id="pauseBtn" onclick="togglePause()" aria-label="Pauza">
         ${session.paused ? I.play() : I.pause()}
       </button>
-      <div class="elapsed ${session.paused ? "show" : ""}">
+      <div class="elapsed ${session.paused ? "show" : ""}" id="elapsedChip">
         <span>odpočívám</span><b id="restElapsed">0:00</b>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
     <div class="next-wrap">
       <div class="next-k">Další</div>
       <div class="next-box">
@@ -545,20 +591,22 @@ function viewRest() {
         <div class="next-nums"><b>${fmtW(p.w)} kg</b><span>·</span><b>${p.from}–${p.to} op.</b></div>
       </div>
     </div>
-  </div>`;
+  </div>
+  ${dock(`<button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>`)}`;
 }
 function viewRpe() {
   const ex = curEx(), sets = session.entries[ex.id].sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ");
-  return `<div class="screen">
-    <div class="ex-head" style="margin-top:24px">
+  return `<div class="screen wk">
+    <div class="topbar"><button class="back" onclick="askAbort()" aria-label="Ukončit trénink">${I.close()}</button></div>
+    <div class="ex-head">
       <div class="ex-name">${esc(ex.name)}</div>
       <div class="ex-set" style="margin-top:8px">Hotovo · ${sets}</div>
       <div class="ex-target">Jak náročné to bylo? RPE 1–10</div>
     </div>
     <div class="rpe-grid">${[1,2,3,4,5,6,7,8,9,10].map((v) => `<button class="rpe-btn" onclick="saveRpe(${v})">${v}</button>`).join("")}</div>
     <div class="center muted">1 = pohoda · 10 = absolutní selhání</div>
-    <div class="btn-row"><button class="btn btn-3" onclick="addSet()">${I.plus()}Ještě jeden set</button></div>
-  </div>`;
+  </div>
+  ${dock("", `<button class="btn btn-3" onclick="addSet()">${I.plus()}Ještě jeden set</button>`)}`;
 }
 function viewSummary() {
   const r = session.lastRecord;
@@ -742,6 +790,8 @@ function viewSettings() {
     </div>
     <div id="ioArea"></div>
     <div class="btn-row"><button class="btn btn-3" onclick="resetOverrides()">Vrátit kroky vah na původní</button></div>
+    <div class="btn-row"><button class="btn btn-3 danger" onclick="resetToday()">${I.undo()}Vyresetovat dnešní trénink</button></div>
+    <div class="muted center" style="font-size:11.5px;margin-top:6px">Smaže jen dnešek. Starší tréninky a cíle vah zůstanou.</div>
   </div>`;
 }
 async function syncStart() { const id = await Sync.create(); if (id) { alert("Sync zapnutý.\n\nKód:\n" + id + "\n\nZadej ho na mobilu."); render(); } else alert("Nepovedlo se: " + Sync.msg); }
@@ -759,6 +809,18 @@ function setRest(id, d) {
   const v = Math.max(30, (ex.rest || 120) + d);
   overrides[id] = { ...(overrides[id] || {}), rest: v, restPrep: Math.max(30, Math.round(v * 0.7 / 5) * 5) };
   DB.set("overrides", overrides); applyOverrides(); render();
+}
+// smaže jen dnešek – rozdělaný i uložený trénink z dnešního dne
+function resetToday() {
+  const t = today();
+  const n = history.filter((h) => h.date === t).length;
+  if (!confirm(`Vyresetovat dnešní trénink?\n\n${n ? `Smaže se ${n} uložený trénink z dneška` : "Smaže se rozdělaný trénink"} a začneš na čisto.\nStarší tréninky a cíle vah zůstanou.`)) return;
+  history = history.filter((h) => h.date !== t);
+  DB.set("history", history);
+  session = null; DB.set("session", null);
+  keepAwake(false); pushNow();
+  tab = "workout"; dashView = "list"; dashEx = null;
+  render();
 }
 function resetOverrides() {
   if (!confirm("Vrátit všechny kroky vah a pauzy na původní?")) return;
