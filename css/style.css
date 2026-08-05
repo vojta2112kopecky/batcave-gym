@@ -19,6 +19,9 @@
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
+/* appka je záměrně jen tmavá – ať ji světlý režim prohlížeče nepřebarví */
+:root { color-scheme: dark; }
+html { background: var(--bg); }
 body {
   background: var(--bg);
   background-image: radial-gradient(ellipse 130% 55% at 50% -8%, var(--bg-glow) 0%, var(--bg) 62%);
