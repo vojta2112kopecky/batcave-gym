@@ -214,7 +214,7 @@ setInterval(() => {
     const left = Math.max(0, (session.restEnd - Date.now()) / 1000);
     const el = $("#restTimer"), bar = $("#restBar"), mini = $("#navRest");
     if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
-    if (bar) bar.style.width = `${(left / session.restTotal) * 100}%`;
+    if (bar) bar.style.transform = `scaleX(${Math.max(0, left / session.restTotal)})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
     const s = Math.ceil(left);
     if (s <= 10 && s > 0 && !session._beeped[s]) { session._beeped[s] = 1; beep(s <= 3 ? 1150 : 880, 0.08, 0.07); }
@@ -378,7 +378,7 @@ function viewRest() {
     <div class="timer-wrap">
       <div class="timer rest" id="restTimer">--:--</div>
       <div class="timer-label">${I.clock()}Rest</div>
-      <div class="rest-bar"><i id="restBar" style="width:100%"></i></div>
+      <div class="rest-bar"><i id="restBar"></i></div>
     </div>
     <div class="center muted">další: set ${nextIdx + 1}/${exSets(ex).length} · ${sp.from}–${sp.to} op. · ${esc(ex.name)}</div>
     <div class="spacer"></div>
