@@ -233,6 +233,56 @@ h2 svg.ico { width: 14px; height: 14px; }
   background: var(--s1); border-radius: 7px; padding: 3px 7px; flex-shrink: 0;
 }
 
+/* ---- průchod tréninkem: díl na cvik ---- */
+.wprog { display: flex; gap: 5px; margin: 4px 0 14px; }
+.wprog i {
+  flex: 1; height: 15px; border-radius: 5px; background: var(--s2);
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  color: #0a0f1a; overflow: hidden; position: relative;
+}
+.wprog i svg.ico { width: 11px; height: 11px; stroke-width: 3.2; }
+.wprog i.done { background: var(--ok); border-color: var(--ok); }
+/* aktuální cvik pomalu doutná – jeden pomalý průchod dokola */
+.wprog i.cur {
+  border-color: rgba(76, 141, 255, .5);
+  background: linear-gradient(100deg,
+    var(--s2) 0%, rgba(76, 141, 255, .18) 30%, var(--accent) 50%,
+    rgba(76, 141, 255, .18) 70%, var(--s2) 100%);
+  background-size: 260% 100%;
+  animation: burn 6s cubic-bezier(.45,0,.55,1) infinite;
+}
+@keyframes burn { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@media (prefers-reduced-motion: reduce) { .wprog i.cur { animation: none; background: var(--accent-soft); } }
+
+/* ---- pauza během restu ---- */
+.rest-ctrl { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 16px; }
+.pause-btn {
+  width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  background: var(--s1); border: 1px solid var(--line2); color: var(--muted);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .18s ease, color .18s ease, transform .1s ease;
+}
+.pause-btn svg.ico { width: 18px; height: 18px; }
+.pause-btn:active { transform: scale(.9); }
+.pause-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+/* malý čas vyjede vedle tlačítka */
+.elapsed {
+  display: grid; grid-template-columns: 0fr; opacity: 0;
+  transition: grid-template-columns .38s cubic-bezier(.32,.72,0,1), opacity .25s ease;
+}
+.elapsed.show { grid-template-columns: 1fr; opacity: 1; }
+.elapsed > * { min-width: 0; overflow: hidden; }
+.elapsed span, .elapsed b { display: block; white-space: nowrap; }
+.elapsed span {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); padding-left: 4px;
+}
+.elapsed b {
+  font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: var(--muted);
+  font-variant-numeric: tabular-nums; padding-left: 4px;
+}
+.timer.rest.paused { color: var(--muted); text-shadow: none; }
+
 /* ---- indikátor ukládání ---- */
 .save-pip {
   position: absolute; top: 8px; right: 6px; display: flex; align-items: center; gap: 5px;

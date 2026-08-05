@@ -253,6 +253,56 @@ h2 svg.ico { width: 14px; height: 14px; }
   background: var(--s1); border-radius: 7px; padding: 3px 7px; flex-shrink: 0;
 }
 
+/* ---- průchod tréninkem: díl na cvik ---- */
+.wprog { display: flex; gap: 5px; margin: 4px 0 14px; }
+.wprog i {
+  flex: 1; height: 15px; border-radius: 5px; background: var(--s2);
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  color: #0a0f1a; overflow: hidden; position: relative;
+}
+.wprog i svg.ico { width: 11px; height: 11px; stroke-width: 3.2; }
+.wprog i.done { background: var(--ok); border-color: var(--ok); }
+/* aktuální cvik pomalu doutná – jeden pomalý průchod dokola */
+.wprog i.cur {
+  border-color: rgba(76, 141, 255, .5);
+  background: linear-gradient(100deg,
+    var(--s2) 0%, rgba(76, 141, 255, .18) 30%, var(--accent) 50%,
+    rgba(76, 141, 255, .18) 70%, var(--s2) 100%);
+  background-size: 260% 100%;
+  animation: burn 6s cubic-bezier(.45,0,.55,1) infinite;
+}
+@keyframes burn { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@media (prefers-reduced-motion: reduce) { .wprog i.cur { animation: none; background: var(--accent-soft); } }
+
+/* ---- pauza během restu ---- */
+.rest-ctrl { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 16px; }
+.pause-btn {
+  width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  background: var(--s1); border: 1px solid var(--line2); color: var(--muted);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .18s ease, color .18s ease, transform .1s ease;
+}
+.pause-btn svg.ico { width: 18px; height: 18px; }
+.pause-btn:active { transform: scale(.9); }
+.pause-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+/* malý čas vyjede vedle tlačítka */
+.elapsed {
+  display: grid; grid-template-columns: 0fr; opacity: 0;
+  transition: grid-template-columns .38s cubic-bezier(.32,.72,0,1), opacity .25s ease;
+}
+.elapsed.show { grid-template-columns: 1fr; opacity: 1; }
+.elapsed > * { min-width: 0; overflow: hidden; }
+.elapsed span, .elapsed b { display: block; white-space: nowrap; }
+.elapsed span {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); padding-left: 4px;
+}
+.elapsed b {
+  font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: var(--muted);
+  font-variant-numeric: tabular-nums; padding-left: 4px;
+}
+.timer.rest.paused { color: var(--muted); text-shadow: none; }
+
 /* ---- indikátor ukládání ---- */
 .save-pip {
   position: absolute; top: 8px; right: 6px; display: flex; align-items: center; gap: 5px;
@@ -515,8 +565,10 @@ textarea.io {
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 6,
+  version: 7,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
+  // mezi cviky se odpočívá dýl než mezi sériemi
+  restBetweenExercises: 120,
   // kolik tréninků po sobě musíš dát horní hranici, než appka přidá kilo
   progressAfter: 2,
   // běžný týden – 1 = pondělí … 7 = neděle
@@ -1402,8 +1454,23 @@ function keepTarget() {
   if (rec) { targets[tKey(rec.exId, rec.i)] = rec.w; DB.set("targets", targets); }
   advanceAfterSet();
 }
-function startRest(sec) { session.phase = "rest"; session.restTotal = sec; session.restEnd = Date.now() + sec * 1000; session._beeped = {}; }
+function startRest(sec) {
+  session.phase = "rest"; session.restTotal = sec;
+  session.restStart = Date.now();
+  session.restEnd = Date.now() + sec * 1000;
+  session.paused = false; session.pausedAt = null; session._beeped = {};
+}
 function adjustRest(d) { session.restEnd += d * 1000; session.restTotal = Math.max(1, session.restTotal + d); DB.set("session", session); }
+// countdown se dá pauznout; čas od začátku pauzy běží dál
+function togglePause() {
+  if (session.paused) {
+    session.restEnd += Date.now() - session.pausedAt;
+    session.paused = false; session.pausedAt = null;
+  } else {
+    session.paused = true; session.pausedAt = Date.now();
+  }
+  DB.set("session", session); render();
+}
 function endRest() {
   if (session._afterRpe) session._afterRpe = false;
   else session.setIndex++;
@@ -1431,7 +1498,7 @@ function saveRpe(v) {
   const w = curW();
   if (session.exIndex >= w.exercises.length - 1) return finishWorkout();
   session.exIndex++; session.setIndex = 0; session._afterRpe = true;
-  startRest(restFor(curEx(), 0));
+  startRest(plan.restBetweenExercises || 120);   // mezi cviky delší pauza
   DB.set("session", session); render();
 }
 function finishWorkout() {
@@ -1467,11 +1534,17 @@ setInterval(() => {
     const el = $("#workTimer");
     if (el) el.textContent = fmtTime((Date.now() - session.workStart) / 1000);
   } else if (session.phase === "rest") {
-    const left = Math.max(0, (session.restEnd - Date.now()) / 1000);
+    const now = Date.now();
+    const ref = session.paused ? session.pausedAt : now;      // pauza countdown zmrazí
+    const left = Math.max(0, (session.restEnd - ref) / 1000);
     const el = $("#restTimer"), bar = $("#restBar"), mini = $("#navRest");
-    if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
+    if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0 && !session.paused); }
     if (bar) bar.style.transform = `scaleX(${left / session.restTotal})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
+    // skutečně uběhlý čas pauzy – běží pořád, i když je countdown zastavený
+    const elapsed = $("#restElapsed");
+    if (elapsed && session.restStart) elapsed.textContent = fmtTime((now - session.restStart) / 1000);
+    if (session.paused) return;
     // pípne jen dvakrát: v 10 sekundách a na konci
     if (left <= 10 && !session._beeped.ten) { session._beeped.ten = 1; beep(880, 0.14, 0.07); }
     if (left <= 0) { gong(); endRest(); }
@@ -1596,6 +1669,14 @@ function viewReady() {
 }
 
 // ---------- trénink ----------
+// průchod celým tréninkem: jeden díl na cvik, hotové zaškrtnuté, ten aktuální doutná
+function wProgress() {
+  const w = curW();
+  return `<div class="wprog">${w.exercises.map((e, i) => {
+    const cls = i < session.exIndex ? "done" : i === session.exIndex ? "cur" : "";
+    return `<i class="${cls}">${i < session.exIndex ? I.check() : ""}</i>`;
+  }).join("")}</div>`;
+}
 function head(ex) {
   const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
   const cells = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
@@ -1603,6 +1684,7 @@ function head(ex) {
     <button class="back" onclick="abortWorkout()">${I.close()}</button>
     ${Sync.enabled() ? `<span class="save-pip"><i id="syncDot" class="sync-dot ${Sync.status}"></i><span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></span>` : ""}
   </div>
+  ${wProgress()}
   <div class="ex-head">
     <div class="ex-name">${esc(ex.name)}</div>
     <div class="setdots">${cells}</div>
@@ -1700,10 +1782,19 @@ function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   const p = planFor(ex, nextIdx);
   return `<div class="screen rest-screen">
+    ${wProgress()}
     <div class="timer-wrap">
-      <div class="timer rest" id="restTimer">--:--</div>
-      <div class="timer-label">${I.clock()}Rest</div>
+      <div class="timer rest ${session.paused ? "paused" : ""}" id="restTimer">--:--</div>
+      <div class="timer-label">${I.clock()}${session.paused ? "Pauza" : "Rest"}</div>
       <div class="rest-bar"><i id="restBar"></i></div>
+    </div>
+    <div class="rest-ctrl">
+      <button class="pause-btn ${session.paused ? "on" : ""}" onclick="togglePause()" aria-label="Pauza">
+        ${session.paused ? I.play() : I.pause()}
+      </button>
+      <div class="elapsed ${session.paused ? "show" : ""}">
+        <span>odpočívám</span><b id="restElapsed">0:00</b>
+      </div>
     </div>
     <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
     <div class="next-wrap">

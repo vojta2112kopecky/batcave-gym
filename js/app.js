@@ -195,8 +195,23 @@ function keepTarget() {
   if (rec) { targets[tKey(rec.exId, rec.i)] = rec.w; DB.set("targets", targets); }
   advanceAfterSet();
 }
-function startRest(sec) { session.phase = "rest"; session.restTotal = sec; session.restEnd = Date.now() + sec * 1000; session._beeped = {}; }
+function startRest(sec) {
+  session.phase = "rest"; session.restTotal = sec;
+  session.restStart = Date.now();
+  session.restEnd = Date.now() + sec * 1000;
+  session.paused = false; session.pausedAt = null; session._beeped = {};
+}
 function adjustRest(d) { session.restEnd += d * 1000; session.restTotal = Math.max(1, session.restTotal + d); DB.set("session", session); }
+// countdown se dá pauznout; čas od začátku pauzy běží dál
+function togglePause() {
+  if (session.paused) {
+    session.restEnd += Date.now() - session.pausedAt;
+    session.paused = false; session.pausedAt = null;
+  } else {
+    session.paused = true; session.pausedAt = Date.now();
+  }
+  DB.set("session", session); render();
+}
 function endRest() {
   if (session._afterRpe) session._afterRpe = false;
   else session.setIndex++;
@@ -224,7 +239,7 @@ function saveRpe(v) {
   const w = curW();
   if (session.exIndex >= w.exercises.length - 1) return finishWorkout();
   session.exIndex++; session.setIndex = 0; session._afterRpe = true;
-  startRest(restFor(curEx(), 0));
+  startRest(plan.restBetweenExercises || 120);   // mezi cviky delší pauza
   DB.set("session", session); render();
 }
 function finishWorkout() {
@@ -260,11 +275,17 @@ setInterval(() => {
     const el = $("#workTimer");
     if (el) el.textContent = fmtTime((Date.now() - session.workStart) / 1000);
   } else if (session.phase === "rest") {
-    const left = Math.max(0, (session.restEnd - Date.now()) / 1000);
+    const now = Date.now();
+    const ref = session.paused ? session.pausedAt : now;      // pauza countdown zmrazí
+    const left = Math.max(0, (session.restEnd - ref) / 1000);
     const el = $("#restTimer"), bar = $("#restBar"), mini = $("#navRest");
-    if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
+    if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0 && !session.paused); }
     if (bar) bar.style.transform = `scaleX(${left / session.restTotal})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
+    // skutečně uběhlý čas pauzy – běží pořád, i když je countdown zastavený
+    const elapsed = $("#restElapsed");
+    if (elapsed && session.restStart) elapsed.textContent = fmtTime((now - session.restStart) / 1000);
+    if (session.paused) return;
     // pípne jen dvakrát: v 10 sekundách a na konci
     if (left <= 10 && !session._beeped.ten) { session._beeped.ten = 1; beep(880, 0.14, 0.07); }
     if (left <= 0) { gong(); endRest(); }
@@ -389,6 +410,14 @@ function viewReady() {
 }
 
 // ---------- trénink ----------
+// průchod celým tréninkem: jeden díl na cvik, hotové zaškrtnuté, ten aktuální doutná
+function wProgress() {
+  const w = curW();
+  return `<div class="wprog">${w.exercises.map((e, i) => {
+    const cls = i < session.exIndex ? "done" : i === session.exIndex ? "cur" : "";
+    return `<i class="${cls}">${i < session.exIndex ? I.check() : ""}</i>`;
+  }).join("")}</div>`;
+}
 function head(ex) {
   const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
   const cells = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
@@ -396,6 +425,7 @@ function head(ex) {
     <button class="back" onclick="abortWorkout()">${I.close()}</button>
     ${Sync.enabled() ? `<span class="save-pip"><i id="syncDot" class="sync-dot ${Sync.status}"></i><span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></span>` : ""}
   </div>
+  ${wProgress()}
   <div class="ex-head">
     <div class="ex-name">${esc(ex.name)}</div>
     <div class="setdots">${cells}</div>
@@ -493,10 +523,19 @@ function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   const p = planFor(ex, nextIdx);
   return `<div class="screen rest-screen">
+    ${wProgress()}
     <div class="timer-wrap">
-      <div class="timer rest" id="restTimer">--:--</div>
-      <div class="timer-label">${I.clock()}Rest</div>
+      <div class="timer rest ${session.paused ? "paused" : ""}" id="restTimer">--:--</div>
+      <div class="timer-label">${I.clock()}${session.paused ? "Pauza" : "Rest"}</div>
       <div class="rest-bar"><i id="restBar"></i></div>
+    </div>
+    <div class="rest-ctrl">
+      <button class="pause-btn ${session.paused ? "on" : ""}" onclick="togglePause()" aria-label="Pauza">
+        ${session.paused ? I.play() : I.pause()}
+      </button>
+      <div class="elapsed ${session.paused ? "show" : ""}">
+        <span>odpočívám</span><b id="restElapsed">0:00</b>
+      </div>
     </div>
     <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
     <div class="next-wrap">
