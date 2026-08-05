@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "batcave-gym",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/Users/vojtech/trenink_app/server.py"],
+      "port": 8917,
+      "url": "http://127.0.0.1:8917"
+    }
+  ]
+}

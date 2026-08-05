@@ -1,0 +1,12 @@
+{
+  "name": "Batcave Gym",
+  "short_name": "Batcave",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05090f",
+  "theme_color": "#05090f",
+  "icons": [
+    { "src": "./icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
