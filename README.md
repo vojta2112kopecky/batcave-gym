@@ -3,6 +3,14 @@
 Osobní tréninková appka. Jen trénink, nic jiného – provede tě od prvního setu do konce.
 Plán je stažený z app.trenerpetr.cz.
 
+**Živě:** https://vojta2112kopecky.github.io/batcave-gym/
+
+Web verze umí všechno kromě ovládání Spotify – to potřebuje běžící Mac.
+Historie se drží v prohlížeči, takže web a lokální verze mají každá svoji
+(přenese se přes Export / Import v dashboardu).
+
+Nasazení změn: `git push` – Pages se překlopí samy do minuty.
+
 ## Spuštění
 
 ```bash
