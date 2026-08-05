@@ -303,9 +303,15 @@ function viewOrder() {
   return `<div class="modal-wrap" onclick="closeOrder()">
     <div class="modal order-modal" onclick="event.stopPropagation()">
       <div class="m-title">Změň pořadí cviků</div>
+      <div class="m-sub">Přetáhni za úchyt. Klepnutím na cvik na něj rovnou skočíš.</div>
       <div class="order-list" id="orderList">
-        ${rest.map((oi) => `<div class="order-item" data-oi="${oi}">
-          <i class="grip">${I.grip()}</i><span>${esc(list[oi].name)}</span></div>`).join("")}
+        ${rest.map((oi, k) => {
+          const done = session.entries[list[oi].id]?.sets.length || 0;
+          return `<div class="order-item ${k === 0 ? "cur" : ""}" data-oi="${oi}" onclick="jumpTo(${oi})">
+            <i class="grip" onclick="event.stopPropagation()">${I.grip()}</i>
+            <span>${esc(list[oi].name)}</span>
+            ${done ? `<b class="odone">${done}×</b>` : ""}</div>`;
+        }).join("")}
       </div>
       <div class="m-row">
         <button class="btn btn-2" onclick="closeOrder()">Zpět</button>
@@ -313,6 +319,21 @@ function viewOrder() {
       </div>
     </div>
   </div>`;
+}
+// skok na konkrétní cvik – odcvičené série si drží
+function jumpTo(oi) {
+  if (session._draft) {
+    session.order = session.order.slice(0, session.exIndex).concat(session._draft);
+    session._draft = null;
+  }
+  const idx = session.order.indexOf(oi);
+  if (idx < 0) return;
+  const ex = curW().exercises[oi];
+  session.exIndex = idx;
+  session.setIndex = session.entries[ex.id]?.sets.length || 0;
+  session.phase = "work"; session.workStart = Date.now();
+  session.orderOpen = false; session._afterRpe = false;
+  DB.set("session", session); pushNow(); render();
 }
 // přetahování prstem i myší
 function initOrderDrag() {
@@ -627,7 +648,7 @@ function viewWork() {
   ${dock(
     `<button class="btn btn-primary" onclick="finishSet(this)">${I.check()}Set hotový</button>`,
     `${logged ? `<button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
-     <button class="btn btn-3" onclick="addSet()">${I.plus()}Set navíc</button>
+     ${i >= exSets(ex).length - 1 ? `<button class="btn btn-3" onclick="addSet()">${I.plus()}Set navíc</button>` : ""}
      <button class="btn btn-3" onclick="endExercise()">${I.skip()}Konec cviku</button>`
   )}`;
 }
@@ -697,7 +718,7 @@ function viewRpe() {
       <div class="ex-set" style="margin-top:8px">Hotovo · ${sets}</div>
       <div class="ex-target">Jak náročné to bylo? RPE 1–10</div>
     </div>
-    <div class="rpe-grid">${[1,2,3,4,5,6,7,8,9,10].map((v) => `<button class="rpe-btn" onclick="saveRpe(${v})">${v}</button>`).join("")}</div>
+    <div class="rpe-grid">${[1,2,3,4,5,6,8,9,10].map((v) => `<button class="rpe-btn" onclick="saveRpe(${v})">${v}</button>`).join("")}</div>
     <div class="center muted">1 = pohoda · 10 = absolutní selhání</div>
   </div>
   ${dock("", `<button class="btn btn-3" onclick="addSet()">${I.plus()}Ještě jeden set</button>`)}`;
@@ -867,12 +888,16 @@ function viewSettings() {
     ? `<div class="panel">
         <div class="title"><span id="syncDot" class="sync-dot ${Sync.status}"></span>Cloud sync zapnutý</div>
         <div class="meta">poslední: <span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></div>
-        <div class="meta code" onclick="copySync()">${esc(Sync.id)}</div>
-        <div class="meta">Tenhle kód zadej na mobilu a máš tam stejná data.</div>
+        <div class="meta code" onclick="copyLink()">${esc(Sync.link())}</div>
+        <div class="meta">Otevři tenhle odkaz na jakémkoli dalším zařízení – napojí se samo, nic se nezadává.</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" style="font-size:13px;padding:13px" onclick="copyLink()">${I.cloud()}Zkopírovat odkaz</button>
+        </div>
         <div class="btn-row">
           <button class="btn btn-2" onclick="Sync.pull()">${I.cloud()}Stáhnout</button>
-          <button class="btn btn-2" onclick="Sync.push()">${I.arrowUp()}Nahrát</button>
+          <button class="btn btn-2" onclick="Sync.push(true)">${I.arrowUp()}Nahrát</button>
         </div>
+        <div class="meta code" onclick="copySync()">kód: ${esc(Sync.id)}</div>
         <div class="btn-row"><button class="btn btn-3" onclick="Sync.disconnect()">Odpojit</button></div>
       </div>`
     : `<div class="panel">
@@ -927,6 +952,11 @@ async function syncJoin() {
   render();
 }
 function copySync() { navigator.clipboard?.writeText(Sync.id); alert("Kód zkopírován."); }
+function copyLink() {
+  const l = Sync.link();
+  navigator.clipboard?.writeText(l);
+  alert("Odkaz zkopírován:\n\n" + l + "\n\nOtevři ho na dalším zařízení – napojí se samo.");
+}
 function setStep(id, v) { overrides[id] = { ...(overrides[id] || {}), step: v }; DB.set("overrides", overrides); applyOverrides(); render(); }
 function setRest(id, d) {
   const ex = allEx().find((e) => e.id === id);
@@ -1020,10 +1050,17 @@ window.addEventListener("load", () => {
   SpotifyUI.init();
   if (session) keepAwake(true);
   render();
-  if (Sync.enabled()) {
+  // sync kód v odkazu napojí zařízení sám; jinak dotáhni, co je v cloudu
+  Sync.fromLink().then((joined) => {
+    if (joined) return render();
+    if (!Sync.enabled()) return;
     Sync.pull(true).then(() => {
       // minule se nestihlo uložit (výpadek signálu) → dorovnej to teď
       if (localStorage.getItem("sync_dirty") === "1") Sync.push(true);
     });
-  }
+  });
+});
+// při návratu do appky si stáhni, co mezitím nahrálo druhé zařízení
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Sync.enabled() && !session) Sync.pull(true);
 });

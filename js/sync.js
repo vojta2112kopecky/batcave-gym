@@ -18,6 +18,19 @@ const Sync = {
 
   url() { return `${this.API}/${this.id}`; },
 
+  // odkaz, který kterékoli zařízení napojí sám od sebe
+  link() { return location.origin + location.pathname + "#s=" + this.id; },
+
+  // sync kód v adrese → napoj se automaticky, nic se nezadává ručně
+  async fromLink() {
+    const m = (location.hash || "").match(/[#&]s=([0-9a-f-]{20,})/i);
+    if (!m) return false;
+    const id = m[1];
+    window.history.replaceState({}, "", location.origin + location.pathname);
+    if (this.id === id) { await this.pull(true); return false; }
+    return await this.connect(id);
+  },
+
   // založí nový sync a nahraje, co mám teď
   async create() {
     this.status = "busy"; paintSync();

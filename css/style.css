@@ -431,9 +431,9 @@ h2 svg.ico { width: 14px; height: 14px; }
 .step-btn:active { background: var(--s3); transform: scale(.94); }
 
 /* ---- RPE ---- */
-.rpe-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 18px 0; }
+.rpe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 26px 0 22px; }
 .rpe-btn {
-  padding: 18px 0; font-size: 19px; font-weight: 800; border-radius: 16px;
+  padding: 26px 0; font-size: 24px; font-weight: 800; border-radius: 20px;
   border: 1px solid var(--line); background: var(--s1); color: var(--text);
   cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums;
   transition: background .12s ease, transform .08s ease;
@@ -585,6 +585,12 @@ table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant
 .order-item .grip { color: var(--dim); flex-shrink: 0; cursor: grab; display: flex; padding: 2px; }
 .order-item .grip svg.ico { width: 18px; height: 18px; }
 .order-item span { flex: 1; line-height: 1.25; }
+.order-item { cursor: pointer; }
+.order-item.cur { border-color: var(--accent); background: var(--accent-soft); }
+.order-item .odone {
+  font-size: 11px; font-weight: 800; color: var(--ok);
+  background: rgba(48, 209, 88, .14); border-radius: 6px; padding: 3px 6px; flex-shrink: 0;
+}
 .order-item.dragging {
   border-color: var(--accent); background: var(--s3); position: relative; z-index: 2;
   box-shadow: 0 10px 30px rgba(0,0,0,.5);
