@@ -32,6 +32,7 @@ const I = {
   bulb: () => ICO('<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.5.4.8 1 .8 1.6V16h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0012 3z"/>'),
   layers: () => ICO('<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/>'),
   cloud: () => ICO('<path d="M17.5 19a4.5 4.5 0 00.5-8.97A6 6 0 006.1 10.5 3.75 3.75 0 006.5 19z"/>'),
+  grip: () => ICO('<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/>'),
   chevronD: () => ICO('<path d="M5 9l7 7 7-7"/>'),
   chevronU: () => ICO('<path d="M5 15l7-7 7 7"/>'),
   // Spotify – oficiální tvar (kruh se třemi vlnami)

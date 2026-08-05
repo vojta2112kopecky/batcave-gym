@@ -48,6 +48,7 @@ const Sync = {
       this.id = id;
       this.merge(data);
       this.done("ok", "napojeno a staženo");
+      await this.push(true);   // rovnou nahraj i to, co bylo jen tady
       return true;
     } catch (e) { this.done("err", e.message); return false; }
   },

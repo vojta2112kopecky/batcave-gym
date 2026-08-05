@@ -10,9 +10,12 @@
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 7,
+  version: 8,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
-  // mezi cviky se odpočívá dýl než mezi sériemi
+  // pauzy: po přípravné sérii i mezi přípravnou a pracovní 1:30,
+  // mezi pracovními sériemi 1:45, mezi cviky 2:00
+  restPrep: 90,
+  restWork: 105,
   restBetweenExercises: 120,
   // kolik tréninků po sobě musíš dát horní hranici, než appka přidá kilo
   progressAfter: 2,

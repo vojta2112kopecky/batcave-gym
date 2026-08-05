@@ -194,12 +194,14 @@ const SpotifyUI = {
   },
 
   // sbalené = jen kolečko s logem uprostřed, rozbaluje se do strany
-  bar() {
+  // vedle něj je ozubené kolo – zmizí, jakmile se playbar otevře
+  bar(gear) {
     return `<div class="spotify ${this.open ? "open" : ""} ${this.state.playing ? "live" : ""}">
       <div class="sp-pill">
         <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">${I.spotify()}</button>
         <div class="sp-panel"><div class="sp-inner">${this.panel()}</div></div>
       </div>
+      ${gear ? `<button class="sp-gear" onclick="openOrder()" aria-label="Pořadí cviků">${I.gear()}</button>` : ""}
     </div>`;
   },
 };
