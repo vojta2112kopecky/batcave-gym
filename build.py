@@ -5,6 +5,7 @@ Použití:  python3 ~/trenink_app/build.py
 Výstup:   dist/batcave-gym.html        – kompletní stránka (otevřeš dvojklikem)
           dist/artifact.html           – bez <html>/<head>/<body>, pro publikaci
 """
+import hashlib
 import os
 import re
 
@@ -17,17 +18,33 @@ def read(rel):
         return f.read()
 
 
-html = read("index.html")
+# --- otisk verze do odkazů, ať prohlížeč po nasazení nedrží starý soubor ---
+def stamp_index():
+    src = read("index.html")
+    assets = re.findall(r'(?:href|src)="((?:css|js)/[^"?]+)(?:\?v=[^"]*)?"', src)
+    h = hashlib.sha1()
+    for a in sorted(set(assets)):
+        h.update(read(a).encode())
+    ver = h.hexdigest()[:8]
+    out = re.sub(r'((?:href|src)="(?:css|js)/[^"?]+)(?:\?v=[^"]*)?"', r'\1?v=' + ver + '"', src)
+    if out != src:
+        with open(os.path.join(ROOT, "index.html"), "w", encoding="utf-8") as f:
+            f.write(out)
+    print("verze assetů:", ver)
+    return out
+
+
+html = stamp_index()
 
 # CSS inline
 for m in re.findall(r'<link rel="stylesheet" href="([^"]+)">', html):
     html = html.replace(f'<link rel="stylesheet" href="{m}">',
-                        "<style>\n" + read(m) + "\n</style>")
+                        "<style>\n" + read(m.split("?")[0]) + "\n</style>")
 
 # JS inline
 for m in re.findall(r'<script src="([^"]+)"></script>', html):
     html = html.replace(f'<script src="{m}"></script>',
-                        "<script>\n" + read(m) + "\n</script>")
+                        "<script>\n" + read(m.split("?")[0]) + "\n</script>")
 
 # manifest a ikona nedávají ve standalone souboru smysl
 html = re.sub(r'\s*<link rel="(manifest|apple-touch-icon|icon)"[^>]*>', "", html)
