@@ -6,7 +6,7 @@
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 4,
+  version: 5,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
   // běžný týden – 1 = pondělí … 7 = neděle
   schedule: { 1: "A", 2: "B", 4: "C", 5: "D" },
@@ -27,32 +27,32 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "chest-upper-incline-smith-bench", name: "Tlaky na šikmé lavici v multipressu",
-          sub: "Vrchní část prsou", part: "Prsa", step: 5, defaultWeight: 40, rest: 150, restPrep: 90,
+          sub: "Vrchní část prsou", part: "Prsa", step: 5, defaultWeight: 40, rest: 155, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 4, to: 6 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "chest-mid-flat-dumbbell-bench", name: "Tlaky na rovné lavici s jednoručkami",
-          sub: "Středy a spodky prsou", part: "Prsa", step: 2, defaultWeight: 24, rest: 120, restPrep: 90,
+          sub: "Středy a spodky prsou", part: "Prsa", step: 2, defaultWeight: 24, rest: 125, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "chest-fly-machine", name: "Rozpažování na rovné lavici s jednoručkami",
-          sub: "Prsa", part: "Prsa", step: 2, defaultWeight: 12, rest: 90, restPrep: 75,
+          sub: "Prsa", part: "Prsa", step: 2, defaultWeight: 12, rest: 95, restPrep: 80,
           sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
         },
         {
           id: "shoulders-side-dumbbell-lateral", name: "Upažování s jednoručkami",
-          sub: "Boční delty", part: "Ramena", step: 1, defaultWeight: 8, rest: 90, restPrep: 60,
+          sub: "Boční delty", part: "Ramena", step: 1, defaultWeight: 8, rest: 95, restPrep: 65,
           sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
         },
         {
           id: "triceps-lateral-pushdown", name: "Stahování kladky",
-          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, defaultWeight: 25, rest: 90, restPrep: 60,
+          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, defaultWeight: 25, rest: 95, restPrep: 65,
           sets: [{ type: "prep", from: 10, to: 12 }, { type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "triceps-long-seated-flat-smith-french-press", name: "Francouzské tlaky vstoje v multipressu",
-          sub: "Dlouhá hlava", part: "Triceps", step: 5, defaultWeight: 25, rest: 120, restPrep: 75,
+          sub: "Dlouhá hlava", part: "Triceps", step: 5, defaultWeight: 25, rest: 125, restPrep: 80,
           sets: [{ type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
       ],
@@ -62,32 +62,32 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "back-lower-close-neutral-row", name: "Veslování úzkým paralelním úchopem",
-          sub: "Spodní část zad", part: "Záda", step: 5, defaultWeight: 55, rest: 150, restPrep: 90,
+          sub: "Spodní část zad", part: "Záda", step: 5, defaultWeight: 55, rest: 155, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "back-mid-smith-wide-row", name: "Veslování širokým úchopem nadhmatem",
-          sub: "Střed zad", part: "Záda", step: 5, defaultWeight: 40, rest: 120, restPrep: 90,
+          sub: "Střed zad", part: "Záda", step: 5, defaultWeight: 40, rest: 125, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "back-lats-upper-wide-pulldown", name: "Stahování horní kladky širokým úchopem",
-          sub: "Latissimy – horní a vnější vlákna", part: "Záda", step: 5, defaultWeight: 55, rest: 120, restPrep: 90,
+          sub: "Latissimy – horní a vnější vlákna", part: "Záda", step: 5, defaultWeight: 55, rest: 125, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "back-lats-lower-close-pulldown", name: "Stahování horní kladky úzkým paralelním úchopem",
-          sub: "Latissimy – spodní a střední vlákna", part: "Záda", step: 5, defaultWeight: 50, rest: 120, restPrep: 90,
+          sub: "Latissimy – spodní a střední vlákna", part: "Záda", step: 5, defaultWeight: 50, rest: 125, restPrep: 95,
           sets: [{ type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "biceps-both-dumbbell-curl", name: "Zdvihy s jednoručkami bez vytáčení",
-          sub: "Dlouhá a krátká hlava", part: "Biceps", step: 1, defaultWeight: 12, rest: 90, restPrep: 60,
+          sub: "Dlouhá a krátká hlava", part: "Biceps", step: 1, defaultWeight: 12, rest: 95, restPrep: 65,
           sets: [{ type: "prep", from: 10, to: 12 }, { type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "biceps-short-preacher-curl", name: "Scottova lavice",
-          sub: "Krátká hlava", part: "Biceps", step: 2.5, defaultWeight: 20, rest: 90, restPrep: 60,
+          sub: "Krátká hlava", part: "Biceps", step: 2.5, defaultWeight: 20, rest: 95, restPrep: 65,
           sets: [{ type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
       ],
@@ -97,22 +97,22 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "legs-hams-lying-leg-curl", name: "Zakopávání vleže",
-          sub: "Zadní stehna", part: "Nohy", step: 5, defaultWeight: 35, rest: 120, restPrep: 90,
+          sub: "Zadní stehna", part: "Nohy", step: 5, defaultWeight: 35, rest: 125, restPrep: 95,
           sets: [{ type: "prep", from: 10, to: 15 }, { type: "prep", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
         },
         {
           id: "legs-quads-leg-press", name: "Leg press",
-          sub: "Přední stehna", part: "Nohy", step: 10, defaultWeight: 120, rest: 180, restPrep: 90,
+          sub: "Přední stehna", part: "Nohy", step: 10, defaultWeight: 120, rest: 185, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "legs-quads-seated-leg-extension", name: "Předkopávání vsedě",
-          sub: "Přední stehna", part: "Nohy", step: 5, defaultWeight: 45, rest: 120, restPrep: 75,
+          sub: "Přední stehna", part: "Nohy", step: 5, defaultWeight: 45, rest: 125, restPrep: 80,
           sets: [{ type: "prep", from: 10, to: 15 }, { type: "prep", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
         },
         {
           id: "legs-calves-seated-calf-raise", name: "Výpony vsedě",
-          sub: "Lýtka", part: "Nohy", step: 5, defaultWeight: 40, rest: 75, restPrep: 60,
+          sub: "Lýtka", part: "Nohy", step: 5, defaultWeight: 40, rest: 80, restPrep: 65,
           sets: [{ type: "work", from: 15, to: 25 }, { type: "work", from: 15, to: 25 }, { type: "work", from: 15, to: 25 }, { type: "work", from: 15, to: 25 }],
         },
       ],
@@ -122,32 +122,32 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "chest-upper-incline-smith-bench", name: "Tlaky na šikmé lavici v multipressu",
-          sub: "Vrchní část prsou", part: "Prsa", step: 5, defaultWeight: 40, rest: 150, restPrep: 90,
+          sub: "Vrchní část prsou", part: "Prsa", step: 5, defaultWeight: 40, rest: 155, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 4, to: 6 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "chest-mid-flat-dumbbell-bench", name: "Tlaky na rovné lavici s jednoručkami",
-          sub: "Středy a spodky prsou", part: "Prsa", step: 2, defaultWeight: 24, rest: 120, restPrep: 90,
+          sub: "Středy a spodky prsou", part: "Prsa", step: 2, defaultWeight: 24, rest: 125, restPrep: 95,
           sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "chest-fly-machine", name: "Rozpažování na rovné lavici s jednoručkami",
-          sub: "Prsa", part: "Prsa", step: 2, defaultWeight: 12, rest: 90, restPrep: 75,
+          sub: "Prsa", part: "Prsa", step: 2, defaultWeight: 12, rest: 95, restPrep: 80,
           sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
         },
         {
           id: "shoulders-side-dumbbell-lateral", name: "Upažování s jednoručkami",
-          sub: "Boční delty", part: "Ramena", step: 1, defaultWeight: 8, rest: 90, restPrep: 60,
+          sub: "Boční delty", part: "Ramena", step: 1, defaultWeight: 8, rest: 95, restPrep: 65,
           sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
         },
         {
           id: "triceps-lateral-pushdown", name: "Stahování kladky",
-          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, defaultWeight: 25, rest: 90, restPrep: 60,
+          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, defaultWeight: 25, rest: 95, restPrep: 65,
           sets: [{ type: "prep", from: 10, to: 12 }, { type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
         {
           id: "triceps-long-seated-flat-smith-french-press", name: "Francouzské tlaky vstoje v multipressu",
-          sub: "Dlouhá hlava", part: "Triceps", step: 5, defaultWeight: 25, rest: 120, restPrep: 75,
+          sub: "Dlouhá hlava", part: "Triceps", step: 5, defaultWeight: 25, rest: 125, restPrep: 80,
           sets: [{ type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
         },
       ],
