@@ -12,10 +12,14 @@ const SPOTIFY_LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname) ||
   /^192\.168\.|^10\./.test(location.hostname);
 
 // ---------- Web API (PKCE) ----------
+// Client ID je veřejný údaj, PKCE ho schovávat nemusí.
+// Client Secret tady NENÍ a být nesmí – repo je veřejné a PKCE ho nepoužívá.
+const SPOTIFY_CLIENT_ID = "429ae1ef523a4960a4f457b979e483fb";
+
 const SpotifyWeb = {
   SCOPES: "user-read-playback-state user-modify-playback-state user-read-currently-playing",
   token: null,
-  get clientId() { return localStorage.getItem("sp_client_id") || ""; },
+  get clientId() { return localStorage.getItem("sp_client_id") || SPOTIFY_CLIENT_ID; },
   set clientId(v) { localStorage.setItem("sp_client_id", v); },
   get refreshToken() { return localStorage.getItem("sp_refresh") || ""; },
   set refreshToken(v) { v ? localStorage.setItem("sp_refresh", v) : localStorage.removeItem("sp_refresh"); },
@@ -32,16 +36,6 @@ const SpotifyWeb = {
   },
 
   async login() {
-    if (!this.clientId) {
-      const id = prompt(
-        "Spotify Client ID\n\n" +
-        "1) developer.spotify.com/dashboard → Create app\n" +
-        "2) Redirect URI nastav přesně na:\n" + this.redirect() + "\n" +
-        "3) Web API zaškrtni, ulož a zkopíruj Client ID sem:"
-      );
-      if (!id) return;
-      this.clientId = id.trim();
-    }
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     const verifier = [...crypto.getRandomValues(new Uint8Array(64))].map((b) => chars[b % chars.length]).join("");
     localStorage.setItem("sp_verifier", verifier);
@@ -154,23 +148,21 @@ const SpotifyUI = {
 
   panel() {
     if (this.mode === "web" && !SpotifyWeb.connected()) {
-      return `<div class="sp-track">Spotify není propojené</div>
-        <div class="sp-ctrl"><button class="sp-connect" onclick="SpotifyWeb.login()">Propojit Spotify</button></div>`;
+      return `<button class="sp-connect" onclick="SpotifyWeb.login()">Propojit Spotify</button>`;
     }
-    return `<div class="sp-track" data-sp-track>${this.label()}</div>
-      <div class="sp-ctrl">
-        <button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
-        <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
-        <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
-      </div>`;
+    return `<button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
+      <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
+      <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
+      <span class="sp-track" data-sp-track>${this.label()}</span>`;
   },
 
+  // sbalené = jen kolečko s logem uprostřed, rozbaluje se do strany
   bar() {
     return `<div class="spotify ${this.open ? "open" : ""} ${this.state.playing ? "live" : ""}">
-      <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">
-        ${I.spotify()}<i class="sp-chev">${I.chevronU()}</i>
-      </button>
-      <div class="sp-panel"><div>${this.panel()}</div></div>
+      <div class="sp-pill">
+        <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">${I.spotify()}</button>
+        <div class="sp-panel"><div class="sp-inner">${this.panel()}</div></div>
+      </div>
     </div>`;
   },
 };

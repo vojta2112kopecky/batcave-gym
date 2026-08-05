@@ -247,8 +247,8 @@ setInterval(() => {
     if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
     if (bar) bar.style.transform = `scaleX(${left / session.restTotal})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
-    const s = Math.ceil(left);
-    if (s <= 10 && s > 0 && !session._beeped[s]) { session._beeped[s] = 1; beep(s <= 3 ? 1150 : 880, 0.08, 0.07); }
+    // pípne jen dvakrát: v 10 sekundách a na konci
+    if (left <= 10 && !session._beeped.ten) { session._beeped.ten = 1; beep(880, 0.14, 0.07); }
     if (left <= 0) { gong(); endRest(); }
   }
 }, 200);

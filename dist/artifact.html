@@ -368,50 +368,56 @@ table.log th { color: var(--dim); font-weight: 800; text-align: left; padding: 7
 table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .pr { color: var(--accent); font-weight: 800; }
 
-/* ---- spotify: sbalené = logo, rozbalené = playbar ---- */
-.spotify { margin: 16px 0 2px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.sp-logo {
-  background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px;
-  display: flex; align-items: center; gap: 3px;
-  transition: color .2s ease, transform .12s ease;
+/* ---- spotify: kolečko uprostřed, rozbaluje se do strany ---- */
+.spotify { margin: 18px 0 2px; display: flex; justify-content: center; }
+.sp-pill {
+  display: flex; align-items: center; max-width: 100%;
+  background: var(--s1); border: 1px solid transparent; border-radius: 999px; padding: 4px;
+  transition: background .3s ease, border-color .3s ease;
 }
-.sp-logo svg.ico { width: 26px; height: 26px; }
-.sp-logo .sp-chev { display: flex; opacity: .6; transition: transform .3s cubic-bezier(.32,.72,0,1); }
-.sp-logo .sp-chev svg.ico { width: 13px; height: 13px; }
-.sp-logo:active { transform: scale(.9); }
-.spotify.live .sp-logo { color: #1db954; }
-.spotify.open .sp-logo .sp-chev { transform: rotate(180deg); }
+.spotify.open .sp-pill { background: var(--s2); border-color: var(--line); }
 
-.sp-panel {
-  width: 100%; overflow: hidden;
-  display: grid; grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows .32s cubic-bezier(.32,.72,0,1), opacity .22s ease;
+.sp-logo {
+  background: none; border: none; color: var(--dim); cursor: pointer; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .25s ease, transform .35s cubic-bezier(.32,.72,0,1);
 }
-.spotify.open .sp-panel { grid-template-rows: 1fr; opacity: 1; }
-.sp-panel > * { min-height: 0; }
-.sp-inner, .sp-panel .sp-track { }
+.sp-logo svg.ico { width: 25px; height: 25px; }
+.sp-logo:active { transform: scale(.86); }
+.spotify.live .sp-logo { color: #1db954; }
+.spotify.open .sp-logo { color: #1db954; transform: rotate(360deg); }
+
+/* vodorovné rozbalení: 0fr → 1fr */
+.sp-panel {
+  display: grid; grid-template-columns: 0fr; opacity: 0;
+  transition: grid-template-columns .4s cubic-bezier(.32,.72,0,1), opacity .25s ease;
+}
+.spotify.open .sp-panel { grid-template-columns: 1fr; opacity: 1; }
+.sp-inner {
+  min-width: 0; overflow: hidden;
+  display: flex; align-items: center; gap: 2px; padding-right: 2px;
+}
+.sp-inner button {
+  background: none; border: none; color: var(--muted); width: 38px; height: 38px;
+  border-radius: 50%; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .15s ease, background .15s ease, transform .1s ease;
+}
+.sp-inner button svg.ico { width: 18px; height: 18px; }
+.sp-inner button.main { background: var(--s3); color: var(--text); }
+.sp-inner button:active { color: #1db954; transform: scale(.86); }
 .sp-track {
-  text-align: center; font-size: 12.5px; color: var(--muted); padding: 2px 4px 10px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px; color: var(--muted); padding: 0 12px 0 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42vw;
 }
 .sp-track b { color: var(--text); font-weight: 700; }
 .sp-track span { color: var(--dim); }
 .sp-track b + span::before { content: " · "; }
-.sp-ctrl { display: flex; align-items: center; justify-content: center; gap: 16px; padding-bottom: 6px; }
-.sp-ctrl button {
-  background: none; border: none; color: var(--muted); width: 40px; height: 40px;
-  border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: color .15s ease, background .15s ease, transform .1s ease;
-}
-.sp-ctrl button svg.ico { width: 19px; height: 19px; }
-.sp-ctrl button.main { background: var(--s2); color: var(--text); width: 48px; height: 48px; }
-.sp-ctrl button.main svg.ico { width: 20px; height: 20px; }
-.sp-ctrl button:active { color: #1db954; transform: scale(.88); }
 .sp-connect {
-  width: auto !important; height: auto !important; border-radius: 999px !important;
-  padding: 11px 20px !important; background: #1db954 !important; color: #04140a !important;
-  font-family: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: .02em;
+  border: none; border-radius: 999px; margin: 0 4px 0 6px; white-space: nowrap;
+  padding: 10px 18px; background: #1db954; color: #04140a; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 800;
 }
 
 /* ---- cloud sync ---- */
@@ -774,10 +780,14 @@ const SPOTIFY_LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname) ||
   /^192\.168\.|^10\./.test(location.hostname);
 
 // ---------- Web API (PKCE) ----------
+// Client ID je veřejný údaj, PKCE ho schovávat nemusí.
+// Client Secret tady NENÍ a být nesmí – repo je veřejné a PKCE ho nepoužívá.
+const SPOTIFY_CLIENT_ID = "429ae1ef523a4960a4f457b979e483fb";
+
 const SpotifyWeb = {
   SCOPES: "user-read-playback-state user-modify-playback-state user-read-currently-playing",
   token: null,
-  get clientId() { return localStorage.getItem("sp_client_id") || ""; },
+  get clientId() { return localStorage.getItem("sp_client_id") || SPOTIFY_CLIENT_ID; },
   set clientId(v) { localStorage.setItem("sp_client_id", v); },
   get refreshToken() { return localStorage.getItem("sp_refresh") || ""; },
   set refreshToken(v) { v ? localStorage.setItem("sp_refresh", v) : localStorage.removeItem("sp_refresh"); },
@@ -794,16 +804,6 @@ const SpotifyWeb = {
   },
 
   async login() {
-    if (!this.clientId) {
-      const id = prompt(
-        "Spotify Client ID\n\n" +
-        "1) developer.spotify.com/dashboard → Create app\n" +
-        "2) Redirect URI nastav přesně na:\n" + this.redirect() + "\n" +
-        "3) Web API zaškrtni, ulož a zkopíruj Client ID sem:"
-      );
-      if (!id) return;
-      this.clientId = id.trim();
-    }
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     const verifier = [...crypto.getRandomValues(new Uint8Array(64))].map((b) => chars[b % chars.length]).join("");
     localStorage.setItem("sp_verifier", verifier);
@@ -916,23 +916,21 @@ const SpotifyUI = {
 
   panel() {
     if (this.mode === "web" && !SpotifyWeb.connected()) {
-      return `<div class="sp-track">Spotify není propojené</div>
-        <div class="sp-ctrl"><button class="sp-connect" onclick="SpotifyWeb.login()">Propojit Spotify</button></div>`;
+      return `<button class="sp-connect" onclick="SpotifyWeb.login()">Propojit Spotify</button>`;
     }
-    return `<div class="sp-track" data-sp-track>${this.label()}</div>
-      <div class="sp-ctrl">
-        <button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
-        <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
-        <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
-      </div>`;
+    return `<button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
+      <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
+      <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
+      <span class="sp-track" data-sp-track>${this.label()}</span>`;
   },
 
+  // sbalené = jen kolečko s logem uprostřed, rozbaluje se do strany
   bar() {
     return `<div class="spotify ${this.open ? "open" : ""} ${this.state.playing ? "live" : ""}">
-      <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">
-        ${I.spotify()}<i class="sp-chev">${I.chevronU()}</i>
-      </button>
-      <div class="sp-panel"><div>${this.panel()}</div></div>
+      <div class="sp-pill">
+        <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">${I.spotify()}</button>
+        <div class="sp-panel"><div class="sp-inner">${this.panel()}</div></div>
+      </div>
     </div>`;
   },
 };
@@ -1333,8 +1331,8 @@ setInterval(() => {
     if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
     if (bar) bar.style.transform = `scaleX(${left / session.restTotal})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
-    const s = Math.ceil(left);
-    if (s <= 10 && s > 0 && !session._beeped[s]) { session._beeped[s] = 1; beep(s <= 3 ? 1150 : 880, 0.08, 0.07); }
+    // pípne jen dvakrát: v 10 sekundách a na konci
+    if (left <= 10 && !session._beeped.ten) { session._beeped.ten = 1; beep(880, 0.14, 0.07); }
     if (left <= 0) { gong(); endRest(); }
   }
 }, 200);
