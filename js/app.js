@@ -346,13 +346,24 @@ function viewHome() {
 // ---------- LET'S GET IT ----------
 function viewReady() {
   const w = curW();
-  const list = w.exercises.map((e) => `<li>${esc(e.name)}</li>`).join("");
+  // cviky se seskupí po partiích tak, jak jdou v plánu za sebou
+  const groups = [];
+  for (const e of w.exercises) {
+    const g = groups[groups.length - 1];
+    if (g && g.part === e.part) g.items.push(e);
+    else groups.push({ part: e.part, items: [e] });
+  }
+  const tree = groups.map((g, gi) => `<div class="branch" style="--i:${gi}">
+      <div class="node-part"><i class="pin"></i>${esc(g.part)}</div>
+      <ul class="twigs">${g.items.map((e) => `<li><i class="j"></i>
+        <span class="nm">${esc(e.name)}</span><span class="n">${e.sets.length}×</span></li>`).join("")}</ul>
+    </div>`).join("");
+
   return `<div class="ready">
     <button class="back" onclick="abortWorkout()">${I.close()}</button>
     <div class="ready-in">
-      <div class="kicker">${esc(w.focus)}</div>
       <div class="ready-title">${esc(w.name)}</div>
-      <ul class="ready-list">${list}</ul>
+      <div class="tree">${tree}</div>
       <button class="btn btn-primary btn-huge" onclick="letsGo()">${I.bolt()}Let's get it</button>
     </div>
   </div>`;

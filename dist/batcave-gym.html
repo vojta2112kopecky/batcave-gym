@@ -199,12 +199,54 @@ h2 svg.ico { width: 14px; height: 14px; }
 @keyframes dim { from { opacity: 0; } to { opacity: 1; } }
 .ready-in { width: 100%; max-width: 380px; text-align: center; animation: rise .45s cubic-bezier(.22,.9,.3,1); }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-.ready .kicker { color: var(--accent); font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-.ready-title { font-size: 38px; font-weight: 800; letter-spacing: -.04em; margin: 10px 0 20px; }
-.ready-list { list-style: none; margin: 0 0 26px; display: flex; flex-direction: column; gap: 7px; }
-.ready-list li { color: var(--muted); font-size: 13.5px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
-.ready-list li:last-child { border-bottom: none; }
+.ready-title { font-size: 38px; font-weight: 800; letter-spacing: -.04em; margin: 0 0 26px; }
 .ready .back { top: 14px; left: 12px; }
+
+/* ---- větvení partie → cviky ---- */
+.tree { text-align: left; margin: 0 0 30px; padding-left: 4px; }
+.branch { margin-bottom: 16px; animation: twig .5s cubic-bezier(.22,.9,.3,1) backwards; animation-delay: calc(.12s * var(--i) + .1s); }
+.branch:last-child { margin-bottom: 0; }
+@keyframes twig { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+.node-part {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 2px;
+}
+.node-part .pin {
+  width: 9px; height: 9px; border-radius: 3px; background: var(--accent);
+  box-shadow: 0 0 14px rgba(76, 141, 255, .8); flex-shrink: 0;
+}
+
+.twigs { list-style: none; margin: 0 0 0 4px; padding: 0; }
+.twigs li {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  min-height: 36px; padding-left: 24px;
+}
+/* svislá páteř */
+.twigs li::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 100%;
+  background: linear-gradient(180deg, rgba(76, 141, 255, .45), var(--line2));
+}
+/* první větev navazuje nahoru až na uzel partie */
+.twigs li:first-child::before { top: -11px; height: calc(100% + 11px); }
+.twigs li:last-child::before { height: 18px; }
+.twigs li:first-child:last-child::before { top: -11px; height: 29px; }
+/* vodorovná spojnice */
+.twigs li::after {
+  content: ""; position: absolute; left: 1px; top: 18px; width: 14px; height: 1px;
+  background: var(--line2);
+}
+/* uzel */
+.twigs li .j {
+  position: absolute; left: 11px; top: 14px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bg); border: 1.5px solid var(--accent); box-sizing: border-box;
+}
+.twigs li .nm { flex: 1; color: var(--muted); font-size: 13.5px; line-height: 1.3; }
+.twigs li .n {
+  color: var(--dim); font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: var(--s1); border-radius: 7px; padding: 3px 7px; flex-shrink: 0;
+}
 
 /* ---- minule / predikce ---- */
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0 4px; }
@@ -1256,13 +1298,24 @@ function viewHome() {
 // ---------- LET'S GET IT ----------
 function viewReady() {
   const w = curW();
-  const list = w.exercises.map((e) => `<li>${esc(e.name)}</li>`).join("");
+  // cviky se seskupí po partiích tak, jak jdou v plánu za sebou
+  const groups = [];
+  for (const e of w.exercises) {
+    const g = groups[groups.length - 1];
+    if (g && g.part === e.part) g.items.push(e);
+    else groups.push({ part: e.part, items: [e] });
+  }
+  const tree = groups.map((g, gi) => `<div class="branch" style="--i:${gi}">
+      <div class="node-part"><i class="pin"></i>${esc(g.part)}</div>
+      <ul class="twigs">${g.items.map((e) => `<li><i class="j"></i>
+        <span class="nm">${esc(e.name)}</span><span class="n">${e.sets.length}×</span></li>`).join("")}</ul>
+    </div>`).join("");
+
   return `<div class="ready">
     <button class="back" onclick="abortWorkout()">${I.close()}</button>
     <div class="ready-in">
-      <div class="kicker">${esc(w.focus)}</div>
       <div class="ready-title">${esc(w.name)}</div>
-      <ul class="ready-list">${list}</ul>
+      <div class="tree">${tree}</div>
       <button class="btn btn-primary btn-huge" onclick="letsGo()">${I.bolt()}Let's get it</button>
     </div>
   </div>`;
