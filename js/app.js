@@ -671,12 +671,28 @@ function viewSettings() {
         <div class="btn-row"><button class="btn btn-3" onclick="syncJoin()">Mám kód z jiného zařízení</button></div>
       </div>`;
 
+  const sp = SPOTIFY_LOCAL
+    ? `<div class="panel"><div class="title">Spotify přes Mac</div>
+        <div class="meta">Ovládá appku ve Spotify na tomhle počítači. Nic se nenastavuje.</div></div>`
+    : SpotifyWeb.connected()
+      ? `<div class="panel">
+          <div class="title"><span class="sync-dot ok"></span>Spotify propojené</div>
+          <div class="meta">Drží se to natrvalo – token se sám obnovuje na pozadí. Odpojí se, jen když ho zrušíš tady nebo ve svém Spotify účtu.</div>
+          <div class="btn-row"><button class="btn btn-3" onclick="SpotifyWeb.disconnect();render()">Odpojit Spotify</button></div>
+        </div>`
+      : `<div class="panel"><div class="title">Spotify není propojené</div>
+          <div class="meta">Propojíš ho jednou a zůstane to tak.</div>
+          <div class="btn-row"><button class="btn btn-2" onclick="SpotifyWeb.login()">Propojit Spotify</button></div>
+        </div>`;
+
   return `<div class="screen">
     <div class="topbar"><button class="back" onclick="dashView='list';render()">${I.chevronL()}</button></div>
     <h1 class="brand">Nastavení</h1>
-    <div class="sub">sync, kroky vah, záloha</div>
+    <div class="sub">sync, spotify, kroky vah, záloha</div>
     <h2>${I.cloud()}Cloud sync</h2>
     ${sync}
+    <h2>${I.spotify()}Spotify</h2>
+    ${sp}
     <h2>${I.gear()}Kroky vah</h2>
     <div class="muted" style="margin-bottom:10px">O kolik kg skáčou tlačítka ± u každého cviku.</div>
     ${rows}

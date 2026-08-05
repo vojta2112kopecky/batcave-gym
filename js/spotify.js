@@ -27,10 +27,13 @@ const SpotifyWeb = {
   connected() { return !!this.refreshToken; },
 
   async init() {
+    // ať prohlížeč úložiště nevyhodí a propojení vydrží
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
     const p = new URLSearchParams(location.search);
     if (p.get("code")) {
       await this.exchange(p.get("code"));
-      history.replaceState({}, "", this.redirect());
+      // POZOR: `history` je v téhle appce pole tréninků, proto window.history
+      window.history.replaceState({}, "", this.redirect());
     }
     if (this.connected()) await this.refresh();
   },
@@ -48,6 +51,19 @@ const SpotifyWeb = {
     });
   },
 
+  // Spotify při PKCE refresh token rotuje – nový se musí hned uložit,
+  // jinak se propojení příště rozpadne.
+  store(r) {
+    if (!r || !r.access_token) return false;
+    this.token = r.access_token;
+    if (r.refresh_token) this.refreshToken = r.refresh_token;
+    const ttl = (r.expires_in || 3600) * 1000;
+    localStorage.setItem("sp_expires", String(Date.now() + ttl));
+    clearTimeout(this._renew);
+    this._renew = setTimeout(() => this.refresh(), Math.max(30000, ttl - 300000)); // 5 min před vypršením
+    return true;
+  },
+
   async exchange(code) {
     try {
       const r = await fetch("https://accounts.spotify.com/api/token", {
@@ -57,24 +73,34 @@ const SpotifyWeb = {
           redirect_uri: this.redirect(), code_verifier: localStorage.getItem("sp_verifier") || "",
         }),
       }).then((x) => x.json());
-      if (r.access_token) { this.token = r.access_token; if (r.refresh_token) this.refreshToken = r.refresh_token; }
+      this.store(r);
     } catch {}
   },
 
   async refresh() {
+    if (!this.refreshToken) return false;
     try {
       const r = await fetch("https://accounts.spotify.com/api/token", {
         method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ client_id: this.clientId, grant_type: "refresh_token", refresh_token: this.refreshToken }),
       }).then((x) => x.json());
-      if (r.access_token) { this.token = r.access_token; if (r.refresh_token) this.refreshToken = r.refresh_token; }
-    } catch {}
+      if (this.store(r)) return true;
+      // token odvolaný nebo neplatný → ať appka ví, že se má přihlásit znovu
+      if (r && (r.error === "invalid_grant" || r.error === "invalid_request")) this.disconnect();
+      return false;
+    } catch { return false; }  // bez signálu token nezahazuj
   },
 
-  async api(method, path) {
-    if (!this.token) return null;
-    const r = await fetch("https://api.spotify.com/v1" + path, { method, headers: { Authorization: "Bearer " + this.token } });
-    if (r.status === 401) { await this.refresh(); return null; }
+  async api(method, path, retry = true) {
+    if (!this.token && !(await this.refresh())) return null;
+    let r;
+    try {
+      r = await fetch("https://api.spotify.com/v1" + path, { method, headers: { Authorization: "Bearer " + this.token } });
+    } catch { return null; }
+    if (r.status === 401 && retry) {
+      if (await this.refresh()) return this.api(method, path, false);
+      return null;
+    }
     if (r.status === 204 || r.status === 202) return {};
     try { return await r.json(); } catch { return {}; }
   },
@@ -94,8 +120,19 @@ const SpotifyWeb = {
     }
     return this.now();
   },
-  disconnect() { this.refreshToken = null; this.token = null; },
+  disconnect() {
+    this.refreshToken = null; this.token = null;
+    localStorage.removeItem("sp_expires");
+    clearTimeout(this._renew);
+  },
 };
+
+// po probuzení telefonu / návratu do appky si rovnou obnov token
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !SpotifyWeb.connected()) return;
+  const exp = +(localStorage.getItem("sp_expires") || 0);
+  if (Date.now() > exp - 60000) SpotifyWeb.refresh().then(() => SpotifyUI.poll());
+});
 
 // ---------- lišta ----------
 const SpotifyUI = {
