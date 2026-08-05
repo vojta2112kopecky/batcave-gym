@@ -6,29 +6,22 @@
 
 const DB = {
   get(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
-  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); Sync.queue(); },
-};
-
-// Cloud sync adapter – připraveno, zatím vypnuto (multidevice až s iPhone buildem)
-const Sync = {
-  enabled: false, endpoint: null,
-  queue() { if (!this.enabled) return; clearTimeout(this._t); this._t = setTimeout(() => this.push(), 2000); },
-  async push() {}, async pull() {},
+  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); if (typeof Sync !== "undefined") Sync.queue(); },
 };
 
 let plan = DB.get("plan", null);
 if (!plan || (plan.version || 0) < DEFAULT_PLAN.version) { plan = JSON.parse(JSON.stringify(DEFAULT_PLAN)); DB.set("plan", plan); }
-let overrides = DB.get("overrides", {}); // exId -> {step, rest, restPrep, defaultWeight}
+let overrides = DB.get("overrides", {});   // exId -> {step, rest, restPrep}
 let history = DB.get("history", []);
 let session = DB.get("session", null);
 let tab = "workout";
 let dashEx = null;
-let dashView = "list"; // list | settings
+let dashView = "list";
 
 function applyOverrides() {
   for (const w of plan.workouts) for (const e of w.exercises) {
     const o = overrides[e.id]; if (!o) continue;
-    for (const k of ["step", "rest", "restPrep", "defaultWeight"]) if (o[k] != null) e[k] = o[k];
+    for (const k of ["step", "rest", "restPrep"]) if (o[k] != null) e[k] = o[k];
   }
 }
 applyOverrides();
@@ -37,7 +30,8 @@ applyOverrides();
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const fmtW = (w) => (w % 1 === 0 ? String(w) : String(w).replace(".", ","));
+const round2 = (n) => Math.round(n * 100) / 100;
+const fmtW = (w) => (w % 1 === 0 ? String(w) : String(round2(w)).replace(".", ","));
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const today = () => iso(new Date());
 const fmtDate = (s) => `${+s.slice(8)}. ${+s.slice(5, 7)}.`;
@@ -45,7 +39,6 @@ const plural = (n, one, few, many) => (n === 1 ? one : n >= 2 && n <= 4 ? few : 
 const wo = (id) => plan.workouts.find((w) => w.id === id);
 const allEx = () => { const seen = new Set(), o = []; for (const w of plan.workouts) for (const e of w.exercises) if (!seen.has(e.id)) { seen.add(e.id); o.push(e); } return o; };
 
-// sety včetně těch, co si přidám během tréninku
 function exSets(ex) {
   const extra = (session && session.extra && session.extra[ex.id]) || 0;
   if (!extra) return ex.sets;
@@ -68,23 +61,44 @@ const lastSet = (id, i) => { const le = lastEntry(id); return le ? le.sets[Math.
 const workSets = (sets) => { const w = sets.filter((s) => s.t !== "prep"); return w.length ? w : sets; };
 const topW = (sets) => Math.max(...workSets(sets).map((s) => s.w));
 
-function recommendWeight(ex, i) {
-  const ls = lastSet(ex.id, i);
-  if (!ls) return ex.defaultWeight;
-  return ls.r >= setSpec(ex, i).to ? ls.w + ex.step : ls.w;
-}
-function predictReps(ex, i, weight) {
-  const sp = setSpec(ex, i), h = exHistory(ex.id);
-  if (!h.length) return sp.from;
-  const pts = h.map((e) => e.sets[Math.min(i, e.sets.length - 1)]).filter(Boolean);
+// ============================================================
+// PROGRESSIVE OVERLOAD
+// Kilo se přidá až po X trénincích po sobě, kdy jsi na stejné váze
+// dal horní hranici opakování a nebylo to na krev (RPE ≤ 8).
+// Dvakrát po sobě pod spodní hranicí → ubíráme.
+// ============================================================
+const progressAfter = () => plan.progressAfter || 2;
+
+function progression(ex, i) {
+  const sp = setSpec(ex, i);
+  const startKg = sp.kg ?? ex.defaultWeight ?? 0;
+  const pts = exHistory(ex.id)
+    .map((e) => ({ s: e.sets[Math.min(i, e.sets.length - 1)], rpe: e.rpe }))
+    .filter((p) => p.s);
+
+  if (!pts.length) return { w: startKg, r: sp.from, state: "start", why: "výchozí váha z plánu" };
+
   const last = pts[pts.length - 1];
-  if (!last) return sp.from;
-  if (weight > last.w) return sp.from;
-  if (weight < last.w) return Math.min(last.r + 2, sp.to);
-  const prev = pts[pts.length - 2];
-  const trend = prev && prev.w === last.w && last.r > prev.r ? 1 : 0;
-  return Math.min(last.r + trend, sp.to);
+  let streak = 0;
+  for (let k = pts.length - 1; k >= 0; k--) {
+    const p = pts[k];
+    if (p.s.w === last.s.w && p.s.r >= sp.to && (p.rpe == null || p.rpe <= 8)) streak++;
+    else break;
+  }
+  const need = progressAfter();
+  if (streak >= need) {
+    return { w: round2(last.s.w + ex.step), r: sp.from, state: "up",
+      why: `${streak}× po sobě ${sp.to} opakování → +${fmtW(ex.step)} kg` };
+  }
+  const tail = pts.slice(-2);
+  if (tail.length === 2 && tail.every((p) => p.s.w === last.s.w && p.s.r < sp.from)) {
+    return { w: Math.max(ex.step, round2(last.s.w - ex.step)), r: sp.from, state: "down",
+      why: "dvakrát po sobě pod cílem → uber a vyjeď to znovu" };
+  }
+  return { w: last.s.w, r: Math.min(last.s.r + 1, sp.to), state: "hold",
+    why: streak ? `ještě ${need - streak}× ${sp.to} opakování a přidáme kilo` : `drž ${fmtW(last.s.w)} kg a přidej opakování` };
 }
+
 const prWeight = (id) => { let p = 0; for (const e of exHistory(id)) for (const s of e.sets) if (s.w > p) p = s.w; return p; };
 
 // ---------- audio ----------
@@ -121,30 +135,47 @@ function startWorkout(id) {
   const w = wo(id);
   session = {
     workoutId: id, workoutName: w.name, focus: w.focus, date: today(), startedAt: Date.now(),
-    exIndex: 0, setIndex: 0, phase: "work", workStart: Date.now(),
+    exIndex: 0, setIndex: 0, phase: "ready", workStart: Date.now(),
     restEnd: null, restTotal: 0, _beeped: {}, pendingW: null, pendingR: null, entries: {}, extra: {},
   };
   DB.set("session", session); keepAwake(true); tab = "workout"; render();
+}
+function letsGo() {
+  session.phase = "work"; session.startedAt = Date.now(); session.workStart = Date.now();
+  DB.set("session", session); beep(660, .08, .06); setTimeout(() => beep(990, .12, .07), 90);
+  render();
 }
 const curW = () => wo(session.workoutId);
 const curEx = () => curW().exercises[session.exIndex];
 const restFor = (ex, i) => (setSpec(ex, i).type === "prep" ? ex.restPrep || 90 : ex.rest || 120);
 
-function finishSet() {
-  const ex = curEx();
-  session.phase = "log";
-  session.pendingW = session.pendingW ?? recommendWeight(ex, session.setIndex);
-  session.pendingR = session.pendingR ?? predictReps(ex, session.setIndex, session.pendingW);
-  DB.set("session", session); render();
+// zelené bliknutí, pak akce
+function flashOk(el, fn) {
+  if (!el || el.dataset.busy) return fn && fn();
+  el.dataset.busy = "1";
+  el.classList.add("ok");
+  beep(880, .06, .05);
+  setTimeout(fn, 240);
 }
-function confirmSet() {
-  const ex = curEx();
-  const e = (session.entries[ex.id] = session.entries[ex.id] || { id: ex.id, name: ex.name, sets: [], rpe: null });
-  e.sets.push({ w: session.pendingW, r: session.pendingR, t: setSpec(ex, session.setIndex).type });
-  session.pendingW = null; session.pendingR = null;
-  if (session.setIndex >= exSets(ex).length - 1) session.phase = "rpe";
-  else startRest(restFor(ex, session.setIndex + 1));
-  DB.set("session", session); render();
+function finishSet(el) {
+  flashOk(el, () => {
+    const ex = curEx(), p = progression(ex, session.setIndex);
+    session.phase = "log";
+    session.pendingW = session.pendingW ?? p.w;
+    session.pendingR = session.pendingR ?? p.r;
+    DB.set("session", session); render();
+  });
+}
+function confirmSet(el) {
+  flashOk(el, () => {
+    const ex = curEx();
+    const e = (session.entries[ex.id] = session.entries[ex.id] || { id: ex.id, name: ex.name, sets: [], rpe: null });
+    e.sets.push({ w: session.pendingW, r: session.pendingR, t: setSpec(ex, session.setIndex).type });
+    session.pendingW = null; session.pendingR = null;
+    if (session.setIndex >= exSets(ex).length - 1) session.phase = "rpe";
+    else startRest(restFor(ex, session.setIndex + 1));
+    DB.set("session", session); render();
+  });
 }
 function startRest(sec) { session.phase = "rest"; session.restTotal = sec; session.restEnd = Date.now() + sec * 1000; session._beeped = {}; }
 function adjustRest(d) { session.restEnd += d * 1000; session.restTotal = Math.max(1, session.restTotal + d); DB.set("session", session); }
@@ -154,12 +185,11 @@ function endRest() {
   session.phase = "work"; session.workStart = Date.now();
   DB.set("session", session); render();
 }
-// vrátit poslední uložený set (překlep ve váze/opakováních)
 function undoSet() {
   const ex = curEx(), e = session.entries[ex.id];
   if (!e || !e.sets.length) return;
   const s = e.sets.pop();
-  session.setIndex = e.sets.length; // další na řadě = kolik jich je uložených
+  session.setIndex = e.sets.length;
   session.phase = "work"; session.workStart = Date.now();
   session.pendingW = s.w; session.pendingR = s.r;
   DB.set("session", session); render();
@@ -167,7 +197,7 @@ function undoSet() {
 function addSet() {
   const ex = curEx();
   session.extra[ex.id] = (session.extra[ex.id] || 0) + 1;
-  if (session.phase === "rpe") { session.phase = "rest"; startRest(restFor(ex, session.setIndex + 1)); session.setIndex = session.setIndex; }
+  if (session.phase === "rpe") startRest(restFor(ex, session.setIndex + 1));
   DB.set("session", session); render();
 }
 function saveRpe(v) {
@@ -187,14 +217,15 @@ function finishWorkout() {
   };
   history.push(rec); DB.set("history", history);
   session.phase = "summary"; session.lastRecord = rec;
-  DB.set("session", session); keepAwake(false); render();
+  DB.set("session", session); keepAwake(false);
+  if (typeof Sync !== "undefined" && Sync.enabled()) Sync.push();
+  render();
 }
 function closeSummary() { session = null; DB.set("session", null); render(); }
 function abortWorkout() {
   if (!confirm("Zrušit rozdělaný trénink? Nic se neuloží.")) return;
   session = null; DB.set("session", null); keepAwake(false); render();
 }
-// ukončit cvik: co je odcvičené se uloží, jde se na RPE
 function endExercise() {
   const ex = curEx();
   if (session.entries[ex.id]?.sets.length) { session.phase = "rpe"; DB.set("session", session); return render(); }
@@ -204,7 +235,7 @@ function endExercise() {
   DB.set("session", session); render();
 }
 
-// ---------- globální hodiny (běží i na dashboardu) ----------
+// ---------- globální hodiny ----------
 setInterval(() => {
   if (!session) return;
   if (session.phase === "work") {
@@ -214,7 +245,7 @@ setInterval(() => {
     const left = Math.max(0, (session.restEnd - Date.now()) / 1000);
     const el = $("#restTimer"), bar = $("#restBar"), mini = $("#navRest");
     if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
-    if (bar) bar.style.transform = `scaleX(${Math.max(0, left / session.restTotal)})`;
+    if (bar) bar.style.transform = `scaleX(${left / session.restTotal})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
     const s = Math.ceil(left);
     if (s <= 10 && s > 0 && !session._beeped[s]) { session._beeped[s] = 1; beep(s <= 3 ? 1150 : 880, 0.08, 0.07); }
@@ -227,18 +258,20 @@ function render() {
   let html;
   if (tab === "dash") html = dashView === "settings" ? viewSettings() : dashEx ? viewExDetail(dashEx) : viewDash();
   else if (!session) html = viewHome();
+  else if (session.phase === "ready") html = viewReady();
   else if (session.phase === "work") html = viewWork();
   else if (session.phase === "log") html = viewLog();
   else if (session.phase === "rest") html = viewRest();
   else if (session.phase === "rpe") html = viewRpe();
   else html = viewSummary();
-  $("#app").innerHTML = html + viewNav();
+  $("#app").innerHTML = html + (session && session.phase === "ready" ? "" : viewNav());
   if (tab === "dash" && dashEx && dashView !== "settings") drawChart("chartW", exHistory(dashEx).map((e) => ({ v: topW(e.sets) })));
+  if (typeof paintSync === "function") paintSync();
 }
 function viewNav() {
   const resting = session && session.phase === "rest" && tab !== "workout";
   return `<nav>
-    <button class="${tab === "workout" ? "active" : ""}" onclick="switchTab('workout')">${I.dumbbell()}${resting ? `<b id="navRest" style="color:var(--gold)">--:--</b>` : "Trénink"}${session && !resting ? '<i class="live"></i>' : ""}</button>
+    <button class="${tab === "workout" ? "active" : ""}" onclick="switchTab('workout')">${I.dumbbell()}${resting ? `<b id="navRest">--:--</b>` : "Trénink"}${session && !resting ? '<i class="live"></i>' : ""}</button>
     <button class="${tab === "dash" ? "active" : ""}" onclick="switchTab('dash')">${I.chart()}Dashboardy</button>
   </nav>`;
 }
@@ -251,10 +284,9 @@ function weekDays() {
   const mon = new Date(now); mon.setDate(now.getDate() - off); mon.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    const key = iso(d);
-    const ov = plan.overrides || {};
-    const workoutId = key in ov ? ov[key] : plan.schedule[i + 1] || null;
-    return { date: d, key, dow: DOW[i], num: d.getDate(), workoutId,
+    const key = iso(d), ov = plan.overrides || {};
+    return { date: d, key, dow: DOW[i], num: d.getDate(),
+      workoutId: key in ov ? ov[key] : plan.schedule[i + 1] || null,
       done: history.find((h) => h.date === key) || null, isToday: key === today() };
   });
 }
@@ -311,40 +343,64 @@ function viewHome() {
   </div>`;
 }
 
-// ---------- workout ----------
+// ---------- LET'S GET IT ----------
+function viewReady() {
+  const w = curW();
+  const list = w.exercises.map((e) => `<li>${esc(e.name)}</li>`).join("");
+  return `<div class="ready">
+    <button class="back" onclick="abortWorkout()">${I.close()}</button>
+    <div class="ready-in">
+      <div class="kicker">${esc(w.focus)}</div>
+      <div class="ready-title">${esc(w.name)}</div>
+      <ul class="ready-list">${list}</ul>
+      <button class="btn btn-primary btn-huge" onclick="letsGo()">${I.bolt()}Let's get it</button>
+    </div>
+  </div>`;
+}
+
+// ---------- trénink ----------
 function head(ex) {
-  const w = curW(), sets = exSets(ex), sp = setSpec(ex, session.setIndex);
+  const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
   const dots = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
   return `<div class="topbar"><button class="back" onclick="abortWorkout()">${I.close()}</button></div>
   <div class="ex-head">
-    <div class="sub" style="margin:0 0 8px">${esc(w.name)} · cvik ${session.exIndex + 1}/${w.exercises.length}</div>
-    <div class="ex-sub">${esc(ex.sub)}</div>
     <div class="ex-name">${esc(ex.name)}</div>
     <div class="setdots">${dots}</div>
-    <div class="ex-set">Set ${session.setIndex + 1}/${sets.length} <span class="type">· ${sp.type === "prep" ? "přípravný" : "pracovní"}${sp.bonus ? " +" : ""}</span></div>
-    <div class="ex-target">cíl ${sp.from}–${sp.to} opakování</div>
+    <div class="ex-set">${sp.type === "prep" ? "Přípravný" : "Pracovní"}${sp.bonus ? " +" : ""} <span>· cíl ${sp.from}–${sp.to} op.</span></div>
+  </div>`;
+}
+function statsBlock(ex, i) {
+  const ls = lastSet(ex.id, i), p = progression(ex, i);
+  const pred = `<div class="stat ${p.state}">
+      <div class="k">Predikce</div>
+      <div class="v">${p.r} op.</div>
+      <div class="v">${fmtW(p.w)} kg</div>
+    </div>`;
+  if (!ls) {
+    return `<div class="stats one">
+      <div class="stat start"><div class="k">Plán</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div>
+    </div>`;
+  }
+  return `<div class="stats">
+    <div class="stat"><div class="k">Minule</div><div class="v">${ls.r} op.</div><div class="v">${fmtW(ls.w)} kg</div></div>
+    ${pred}
   </div>`;
 }
 function viewWork() {
   const ex = curEx(), i = session.setIndex;
-  const ls = lastSet(ex.id, i), rec = recommendWeight(ex, i), pred = predictReps(ex, i, rec);
   const logged = session.entries[ex.id]?.sets.length || 0;
   return `<div class="screen">
     ${head(ex)}
-    <div class="chips">
-      ${ls ? `<div class="chip">${I.history()}naposledy <b>${ls.r}×</b> @ <b>${fmtW(ls.w)} kg</b></div>` : `<div class="chip">${I.history()}první záznam</div>`}
-      <div class="chip accent">${I.target()}doporučeno <b>${fmtW(rec)} kg</b></div>
-      <div class="chip violet">${I.arrowUp()}predikce <b>${pred} op.</b></div>
-    </div>
+    ${statsBlock(ex, i)}
     <div class="timer-wrap">
       <div class="timer work" id="workTimer">0:00</div>
       <div class="timer-label">${I.clock()}Work time</div>
     </div>
-    <button class="btn btn-primary" onclick="finishSet()">${I.check()}Set hotový</button>
+    <button class="btn btn-primary" onclick="finishSet(this)">${I.check()}Set hotový</button>
     <div class="btn-row">
-      ${logged ? `<button class="btn btn-ghost" style="opacity:.55" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
-      <button class="btn btn-ghost" style="opacity:.55" onclick="addSet()">${I.plus()}Set navíc</button>
-      <button class="btn btn-ghost" style="opacity:.45" onclick="endExercise()">${I.skip()}Konec cviku</button>
+      ${logged ? `<button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
+      <button class="btn btn-3" onclick="addSet()">${I.plus()}Set navíc</button>
+      <button class="btn btn-3" onclick="endExercise()">${I.skip()}Konec cviku</button>
     </div>
     ${SpotifyUI.bar()}
   </div>`;
@@ -369,14 +425,14 @@ function viewLog() {
         <button class="step-btn" onclick="bumpR(1)">${I.plus()}<span>1</span></button>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="confirmSet()">${I.check()}Uložit set</button>
+    <button class="btn btn-primary" onclick="confirmSet(this)">${I.check()}Uložit set</button>
   </div>`;
 }
-function bumpW(d) { session.pendingW = Math.max(0, Math.round((session.pendingW + d * curEx().step) * 100) / 100); $("#wVal").innerHTML = `${fmtW(session.pendingW)}<small> kg</small>`; DB.set("session", session); }
+function bumpW(d) { session.pendingW = Math.max(0, round2(session.pendingW + d * curEx().step)); $("#wVal").innerHTML = `${fmtW(session.pendingW)}<small> kg</small>`; DB.set("session", session); }
 function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rVal").textContent = session.pendingR; DB.set("session", session); }
 
 function viewRest() {
-  const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1, sp = setSpec(ex, nextIdx);
+  const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   return `<div class="screen">
     ${head(ex)}
     <div class="timer-wrap">
@@ -384,29 +440,27 @@ function viewRest() {
       <div class="timer-label">${I.clock()}Rest</div>
       <div class="rest-bar"><i id="restBar"></i></div>
     </div>
-    <div class="center muted">další: set ${nextIdx + 1}/${exSets(ex).length} · ${sp.from}–${sp.to} op. · ${esc(ex.name)}</div>
-    <div class="spacer"></div>
-    <button class="btn btn-blue" onclick="endRest()">${I.bolt()}Jdu na set</button>
+    ${statsBlock(ex, nextIdx)}
+    <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
     <div class="btn-row">
-      <button class="btn btn-ghost" onclick="adjustRest(-30)">${I.minus()}30 s</button>
-      <button class="btn btn-ghost" onclick="adjustRest(30)">${I.plus()}30 s</button>
+      <button class="btn btn-2" onclick="adjustRest(-30)">${I.minus()}30 s</button>
+      <button class="btn btn-2" onclick="adjustRest(30)">${I.plus()}30 s</button>
     </div>
-    <div class="btn-row"><button class="btn btn-ghost" style="opacity:.5" onclick="undoSet()">${I.undo()}Vrátit poslední set</button></div>
+    <div class="btn-row"><button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit poslední set</button></div>
     ${SpotifyUI.bar()}
   </div>`;
 }
 function viewRpe() {
   const ex = curEx(), sets = session.entries[ex.id].sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ");
   return `<div class="screen">
-    <div class="ex-head" style="margin-top:26px">
-      <div class="ex-sub">${esc(ex.sub)}</div>
+    <div class="ex-head" style="margin-top:24px">
       <div class="ex-name">${esc(ex.name)}</div>
-      <div class="ex-set">Hotovo · ${sets}</div>
+      <div class="ex-set" style="margin-top:8px">Hotovo · ${sets}</div>
       <div class="ex-target">Jak náročné to bylo? RPE 1–10</div>
     </div>
     <div class="rpe-grid">${[1,2,3,4,5,6,7,8,9,10].map((v) => `<button class="rpe-btn" onclick="saveRpe(${v})">${v}</button>`).join("")}</div>
     <div class="center muted">1 = pohoda · 10 = absolutní selhání</div>
-    <div class="btn-row"><button class="btn btn-ghost" style="opacity:.5" onclick="addSet()">${I.plus()}Ještě jeden set</button></div>
+    <div class="btn-row"><button class="btn btn-3" onclick="addSet()">${I.plus()}Ještě jeden set</button></div>
   </div>`;
 }
 function viewSummary() {
@@ -436,25 +490,15 @@ function viewSummary() {
 function recos() {
   const out = [];
   for (const ex of allEx()) {
-    const h = exHistory(ex.id);
-    if (!h.length) continue;
-    const last = h[h.length - 1], sp = ex.sets[ex.sets.length - 1];
-    const tw = topW(last.sets), ws = workSets(last.sets);
-    const hitTop = ws.every((s) => s.r >= sp.to);
-    const belowBottom = ws.some((s) => s.r < sp.from);
-    const sameW = h.slice(-3).filter((e) => topW(e.sets) === tw).length;
-    if (h.length >= 3 && sameW >= 3 && !hitTop) {
-      out.push({ p: 1, ex, txt: `Stojí 3 tréninky na ${fmtW(tw)} kg. Zkus deload na ${fmtW(Math.round(tw * 0.9 / ex.step) * ex.step)} kg a vyjeď to znovu.` });
-    } else if (hitTop && (last.rpe == null || last.rpe <= 8)) {
-      out.push({ p: 0, ex, txt: `Dal jsi horní hranici opakování${last.rpe ? ` při RPE ${last.rpe}` : ""}. Jdi na ${fmtW(tw + ex.step)} kg.` });
-    } else if (last.rpe >= 9 && belowBottom) {
-      out.push({ p: 2, ex, txt: `RPE ${last.rpe} a pod cílový rozsah. Drž ${fmtW(tw)} kg, dokud nedáš ${sp.from}+ opakování.` });
-    }
+    if (!exHistory(ex.id).length) continue;
+    const i = ex.sets.length - 1, p = progression(ex, i);
+    if (p.state === "hold") continue;
+    out.push({ ex, p, prio: p.state === "up" ? 0 : p.state === "down" ? 1 : 2 });
   }
-  return out.sort((a, b) => a.p - b.p);
+  return out.sort((a, b) => a.prio - b.prio);
 }
 function weekStats() {
-  const days = weekDays(), keys = days.map((d) => d.key);
+  const keys = weekDays().map((d) => d.key);
   const hs = history.filter((h) => keys.includes(h.date));
   const sets = hs.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.length, 0), 0);
   const ton = hs.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
@@ -467,10 +511,13 @@ function viewDash() {
   const ws = weekStats(), rc = recos();
   const cards = allEx().map((e) => {
     const h = exHistory(e.id), last = h.length ? h[h.length - 1] : null;
+    const p = progression(e, e.sets.length - 1);
     return `<div class="card" onclick="openEx('${e.id}')">
       <div class="body">
         <div class="title">${esc(e.name)}</div>
-        <div class="meta">${h.length ? `${h.length}× · PR <span class="pr">${fmtW(prWeight(e.id))} kg</span> · naposledy ${last.sets.map((s) => s.r + "×" + fmtW(s.w)).join(", ")}` : `${esc(e.part)} · zatím žádná data`}</div>
+        <div class="meta">${h.length
+          ? `${h.length}× · PR <span class="pr">${fmtW(prWeight(e.id))} kg</span> · naposledy ${last.sets.map((s) => s.r + "×" + fmtW(s.w)).join(", ")}`
+          : `${esc(e.part)} · start ${fmtW(p.w)} kg`}</div>
       </div><div class="go">${I.chevronR()}</div></div>`;
   }).join("");
   const tot = history.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
@@ -486,36 +533,37 @@ function viewDash() {
     </div>
     <h2>${I.bulb()}Doporučení</h2>
     ${rc.length ? rc.map((r) => `<div class="card" onclick="openEx('${r.ex.id}')">
-        <div class="dot ${r.p === 0 ? "up" : r.p === 1 ? "down" : "hold"}"></div>
+        <div class="dot ${r.p.state === "up" ? "up" : r.p.state === "down" ? "down" : "hold"}"></div>
         <div class="body">
           <div class="title" style="font-size:14px">${esc(r.ex.name)}</div>
-          <div class="meta">${esc(r.txt)}</div>
+          <div class="meta">${esc(r.p.why)} · ${fmtW(r.p.w)} kg</div>
         </div><div class="go">${I.chevronR()}</div></div>`).join("")
       : `<div class="muted">Odcvič pár tréninků a začnu ti radit, kdy přidat a kdy podržet váhu.</div>`}
     <h2>${I.dumbbell()}Cviky</h2>
     ${cards}
-    <h2>${I.gear()}Nastavení a data</h2>
-    <div class="btn-row">
-      <button class="btn btn-ghost" onclick="dashView='settings';render()">${I.gear()}Kroky vah</button>
-      <button class="btn btn-ghost" onclick="exportData()">Export</button>
-      <button class="btn btn-ghost" onclick="importPrompt()">Import</button>
-    </div>
-    <div id="ioArea"></div>
+    <h2>${I.gear()}Nastavení</h2>
+    <div class="card" onclick="dashView='settings';render()">
+      <div class="body"><div class="title">Nastavení a data</div>
+      <div class="meta">cloud sync <span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span> · kroky vah · záloha</div></div>
+      <div class="go">${I.chevronR()}</div></div>
   </div>`;
 }
 function openEx(id) { dashEx = id; render(); }
 function viewExDetail(id) {
   const ex = allEx().find((e) => e.id === id);
   const h = exHistory(id);
+  const p = ex ? progression(ex, ex.sets.length - 1) : null;
   const rows = [...h].reverse().map((e) => `<tr><td>${fmtDate(e.date)}</td>
     <td>${e.sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ")}</td><td>${e.rpe ?? "–"}</td></tr>`).join("");
   return `<div class="screen">
     <div class="topbar"><button class="back" onclick="dashEx=null;render()">${I.chevronL()}</button></div>
     <div class="ex-head">
-      <div class="ex-sub">${esc(ex ? ex.sub : "")}</div>
       <div class="ex-name">${esc(ex ? ex.name : id)}</div>
       <div class="ex-target">PR <span class="pr">${fmtW(prWeight(id))} kg</span> · ${h.length} ${plural(h.length, "záznam", "záznamy", "záznamů")}</div>
     </div>
+    ${p ? `<div class="stats one"><div class="stat ${p.state}">
+      <div class="k">Příště</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div></div>
+      <div class="center muted">${esc(p.why)}</div>` : ""}
     <h2>${I.chart()}Progres váhy (top set)</h2>
     <canvas class="chart" id="chartW" width="440" height="170"></canvas>
     <h2>${I.history()}Historie</h2>
@@ -524,33 +572,70 @@ function viewExDetail(id) {
   </div>`;
 }
 
-// ---------- nastavení kroků vah ----------
+// ---------- nastavení ----------
 const STEPS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
 function viewSettings() {
   const rows = allEx().map((e) => `<div class="panel">
     <div class="title">${esc(e.name)}</div>
     <div class="meta">${esc(e.part)} · pauza ${e.rest} s</div>
-    <div class="setrow">
-      ${STEPS.map((s) => `<button class="stepchip ${e.step === s ? "on" : ""}" onclick="setStep('${e.id}',${s})">${fmtW(s)}</button>`).join("")}
-    </div>
-    <div class="setrow">
-      <button class="stepchip" onclick="setRest('${e.id}',-15)">−15 s</button>
-      <button class="stepchip" onclick="setRest('${e.id}',15)">+15 s</button>
+    <div class="setrow">${STEPS.map((s) => `<button class="stepchip ${e.step === s ? "on" : ""}" onclick="setStep('${e.id}',${s})">${fmtW(s)}</button>`).join("")}</div>
+    <div class="setrow pair">
+      <button class="stepchip" onclick="setRest('${e.id}',-15)">−15 s pauza</button>
+      <button class="stepchip" onclick="setRest('${e.id}',15)">+15 s pauza</button>
     </div>
   </div>`).join("");
+
+  const sync = Sync.enabled()
+    ? `<div class="panel">
+        <div class="title"><span id="syncDot" class="sync-dot ${Sync.status}"></span>Cloud sync zapnutý</div>
+        <div class="meta">poslední: <span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></div>
+        <div class="meta code" onclick="copySync()">${esc(Sync.id)}</div>
+        <div class="meta">Tenhle kód zadej na mobilu a máš tam stejná data.</div>
+        <div class="btn-row">
+          <button class="btn btn-2" onclick="Sync.pull()">${I.cloud()}Stáhnout</button>
+          <button class="btn btn-2" onclick="Sync.push()">${I.arrowUp()}Nahrát</button>
+        </div>
+        <div class="btn-row"><button class="btn btn-3" onclick="Sync.disconnect()">Odpojit</button></div>
+      </div>`
+    : `<div class="panel">
+        <div class="title">Cloud sync</div>
+        <div class="meta">Zapni a dostaneš kód. Zadáš ho na dalším zařízení a historie se drží pohromadě.</div>
+        <div class="btn-row"><button class="btn btn-primary" style="font-size:14px;padding:14px" onclick="syncStart()">${I.cloud()}Zapnout sync</button></div>
+        <div class="btn-row"><button class="btn btn-3" onclick="syncJoin()">Mám kód z jiného zařízení</button></div>
+      </div>`;
+
   return `<div class="screen">
     <div class="topbar"><button class="back" onclick="dashView='list';render()">${I.chevronL()}</button></div>
-    <h1 class="brand">Kroky vah</h1>
-    <div class="sub">o kolik kg skáčou tlačítka ± u každého cviku</div>
+    <h1 class="brand">Nastavení</h1>
+    <div class="sub">sync, kroky vah, záloha</div>
+    <h2>${I.cloud()}Cloud sync</h2>
+    ${sync}
+    <h2>${I.gear()}Kroky vah</h2>
+    <div class="muted" style="margin-bottom:10px">O kolik kg skáčou tlačítka ± u každého cviku.</div>
     ${rows}
-    <div class="btn-row"><button class="btn btn-ghost" onclick="resetOverrides()">Vrátit původní hodnoty</button></div>
+    <h2>${I.history()}Záloha</h2>
+    <div class="btn-row">
+      <button class="btn btn-2" onclick="exportData()">Export JSON</button>
+      <button class="btn btn-2" onclick="importPrompt()">Import</button>
+    </div>
+    <div id="ioArea"></div>
+    <div class="btn-row"><button class="btn btn-3" onclick="resetOverrides()">Vrátit kroky vah na původní</button></div>
   </div>`;
 }
+async function syncStart() { const id = await Sync.create(); if (id) { alert("Sync zapnutý.\n\nKód:\n" + id + "\n\nZadej ho na mobilu."); render(); } else alert("Nepovedlo se: " + Sync.msg); }
+async function syncJoin() {
+  const id = prompt("Vlož sync kód z druhého zařízení:");
+  if (!id) return;
+  const ok = await Sync.connect(id);
+  alert(ok ? "Napojeno, data stažena." : "Nepovedlo se: " + Sync.msg);
+  render();
+}
+function copySync() { navigator.clipboard?.writeText(Sync.id); alert("Kód zkopírován."); }
 function setStep(id, v) { overrides[id] = { ...(overrides[id] || {}), step: v }; DB.set("overrides", overrides); applyOverrides(); render(); }
 function setRest(id, d) {
   const ex = allEx().find((e) => e.id === id);
   const v = Math.max(30, (ex.rest || 120) + d);
-  overrides[id] = { ...(overrides[id] || {}), rest: v, restPrep: Math.max(30, Math.round(v * 0.7 / 15) * 15) };
+  overrides[id] = { ...(overrides[id] || {}), rest: v, restPrep: Math.max(30, Math.round(v * 0.7 / 5) * 5) };
   DB.set("overrides", overrides); applyOverrides(); render();
 }
 function resetOverrides() {
@@ -576,24 +661,22 @@ function drawChart(id, pts) {
     x.beginPath(); x.moveTo(pad, yy); x.lineTo(W - pad, yy); x.stroke();
     x.fillText(fmtW(Math.round(v * 10) / 10) + " kg", 2, yy + 3);
   }
-  const grad = x.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0, "#8b7cff"); grad.addColorStop(1, "#4c8dff");
-  // jemná plocha pod křivkou
   const fill = x.createLinearGradient(0, 0, 0, H);
   fill.addColorStop(0, "rgba(76,141,255,.22)"); fill.addColorStop(1, "rgba(76,141,255,0)");
   x.beginPath();
   pts.forEach((p, i) => (i ? x.lineTo(X(i), Y(p.v)) : x.moveTo(X(i), Y(p.v))));
   x.lineTo(X(pts.length - 1), H - pad); x.lineTo(X(0), H - pad); x.closePath();
   x.fillStyle = fill; x.fill();
+  const grad = x.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, "#8b7cff"); grad.addColorStop(1, "#4c8dff");
   x.strokeStyle = grad; x.lineWidth = 2.5; x.lineJoin = "round"; x.beginPath();
   pts.forEach((p, i) => (i ? x.lineTo(X(i), Y(p.v)) : x.moveTo(X(i), Y(p.v))));
   x.stroke();
-  // zvýrazněný poslední bod
   pts.forEach((p, i) => {
-    const lastOne = i === pts.length - 1;
-    x.beginPath(); x.arc(X(i), Y(p.v), lastOne ? 4.5 : 3, 0, 7);
-    x.fillStyle = lastOne ? "#4c8dff" : "rgba(255,255,255,.35)"; x.fill();
-    if (lastOne) { x.strokeStyle = "#000"; x.lineWidth = 2; x.stroke(); }
+    const isLast = i === pts.length - 1;
+    x.beginPath(); x.arc(X(i), Y(p.v), isLast ? 4.5 : 3, 0, 7);
+    x.fillStyle = isLast ? "#4c8dff" : "rgba(255,255,255,.35)"; x.fill();
+    if (isLast) { x.strokeStyle = "#000"; x.lineWidth = 2; x.stroke(); }
   });
 }
 
@@ -603,7 +686,7 @@ function exportData() {
 }
 function importPrompt() {
   $("#ioArea").innerHTML = `<div class="spacer"></div><textarea class="io" id="importBox" placeholder="Vlož JSON zálohy"></textarea>
-    <button class="btn btn-ghost" style="margin-top:8px" onclick="doImport()">Naimportovat</button>`;
+    <button class="btn btn-2" style="margin-top:8px" onclick="doImport()">Naimportovat</button>`;
 }
 function doImport() {
   try {
@@ -623,4 +706,5 @@ window.addEventListener("load", () => {
   SpotifyUI.init();
   if (session) keepAwake(true);
   render();
+  if (Sync.enabled()) Sync.pull(true);
 });

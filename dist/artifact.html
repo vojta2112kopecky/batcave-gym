@@ -127,21 +127,41 @@ h2 svg.ico { width: 14px; height: 14px; }
 .hero .htitle { font-size: 29px; font-weight: 800; letter-spacing: -.035em; margin: 7px 0 4px; }
 .hero .hfocus { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
 
-/* ---- tlačítka ---- */
+/* ---- tlačítka: 3 úrovně důležitosti ---- */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%;
   border: none; border-radius: var(--r-btn); font-family: inherit; font-weight: 800;
-  letter-spacing: -.01em; cursor: pointer; transition: transform .08s ease, filter .12s ease;
+  letter-spacing: -.01em; cursor: pointer;
+  transition: transform .08s ease, filter .12s ease, background .2s ease, box-shadow .2s ease;
 }
 .btn:active { transform: scale(.98); filter: brightness(1.15); }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* 1. hlavní akce – jedna na obrazovku */
 .btn-primary {
   background: linear-gradient(180deg, #5a97ff, var(--accent));
   color: #fff; font-size: 17px; padding: 18px;
   box-shadow: 0 8px 28px rgba(76, 141, 255, .3), inset 0 1px 0 rgba(255, 255, 255, .22);
 }
-.btn-blue { background: var(--s2); color: var(--text); font-size: 17px; padding: 18px; border: 1px solid var(--line2); }
-.btn-ghost { background: var(--s1); color: var(--muted); border: 1px solid var(--line); font-size: 12.5px; font-weight: 700; padding: 12px; }
+.btn-huge { font-size: 19px; padding: 22px; }
+/* potvrzení – zelené bliknutí */
+.btn.ok {
+  background: linear-gradient(180deg, #4ade80, var(--ok)) !important;
+  box-shadow: 0 8px 34px rgba(48, 209, 88, .45), inset 0 1px 0 rgba(255, 255, 255, .3) !important;
+  transform: scale(1.015);
+}
+/* 2. vedlejší – obrys */
+.btn-2 {
+  background: transparent; color: var(--text); border: 1px solid var(--line2);
+  font-size: 13.5px; font-weight: 700; padding: 13px;
+}
+/* 3. drobné – jen text */
+.btn-3 {
+  background: none; color: var(--dim); border: none;
+  font-size: 12.5px; font-weight: 600; padding: 11px;
+}
+.btn-3 svg.ico { width: 15px; height: 15px; }
+.btn-3:active { color: var(--muted); }
 .btn-row { display: flex; gap: 8px; margin-top: 8px; }
 .btn-row .btn { flex: 1; }
 .back { position: absolute; top: 6px; left: 4px; background: none; border: none; color: var(--dim); cursor: pointer; padding: 5px; opacity: .55; }
@@ -161,6 +181,44 @@ h2 svg.ico { width: 14px; height: 14px; }
 .setdots i.done { background: var(--ok); }
 .setdots i.cur { background: var(--accent); box-shadow: 0 0 10px rgba(76, 141, 255, .6); }
 .setdots i.prep { opacity: .5; }
+
+/* ---- LET'S GET IT ---- */
+.ready {
+  position: fixed; inset: 0; z-index: 30; background: #000;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: dim .35s ease;
+}
+@keyframes dim { from { opacity: 0; } to { opacity: 1; } }
+.ready-in { width: 100%; max-width: 380px; text-align: center; animation: rise .45s cubic-bezier(.22,.9,.3,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.ready .kicker { color: var(--accent); font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.ready-title { font-size: 38px; font-weight: 800; letter-spacing: -.04em; margin: 10px 0 20px; }
+.ready-list { list-style: none; margin: 0 0 26px; display: flex; flex-direction: column; gap: 7px; }
+.ready-list li { color: var(--muted); font-size: 13.5px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
+.ready-list li:last-child { border-bottom: none; }
+.ready .back { top: 14px; left: 12px; }
+
+/* ---- minule / predikce ---- */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0 4px; }
+.stats.one { grid-template-columns: 1fr; max-width: 190px; margin-inline: auto; }
+.stat {
+  background: var(--s1); border: 1px solid var(--line); border-radius: 16px;
+  padding: 13px 10px; text-align: center;
+}
+.stat .k { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin-bottom: 7px; }
+.stat .v { font-size: 21px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.stat .v + .v { color: var(--muted); font-size: 18px; }
+/* stav predikce nese barvu */
+.stat.up { border-color: rgba(48, 209, 88, .45); background: rgba(48, 209, 88, .08); }
+.stat.up .k, .stat.up .v { color: var(--ok); }
+.stat.up .v + .v { color: rgba(48, 209, 88, .75); }
+.stat.hold { border-color: rgba(76, 141, 255, .4); background: var(--accent-soft); }
+.stat.hold .k, .stat.hold .v { color: #a9c8ff; }
+.stat.hold .v + .v { color: #7ea8f0; }
+.stat.down { border-color: rgba(139, 124, 255, .4); background: rgba(139, 124, 255, .09); }
+.stat.down .k, .stat.down .v { color: #c2baff; }
+.stat.down .v + .v { color: #9d92e6; }
+.stat.start { border-color: var(--line2); }
 
 /* ---- chipy ---- */
 .chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 14px 0; }
@@ -241,25 +299,69 @@ table.log th { color: var(--dim); font-weight: 800; text-align: left; padding: 7
 table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .pr { color: var(--accent); font-weight: 800; }
 
-/* ---- spotify ---- */
-.spotify {
-  display: flex; align-items: center; gap: 8px; background: var(--s1);
-  border: 1px solid var(--line); border-radius: var(--r-card); padding: 9px 10px; margin: 14px 0 2px;
+/* ---- spotify: sbalené = logo, rozbalené = playbar ---- */
+.spotify { margin: 16px 0 2px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sp-logo {
+  background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px;
+  display: flex; align-items: center; gap: 3px;
+  transition: color .2s ease, transform .12s ease;
 }
-.spotify .track { flex: 1; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
-.spotify button {
-  background: var(--s2); border: none; color: var(--text); width: 40px; height: 40px;
-  border-radius: 50%; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  transition: background .12s ease, transform .08s ease;
+.sp-logo svg.ico { width: 26px; height: 26px; }
+.sp-logo .sp-chev { display: flex; opacity: .6; transition: transform .3s cubic-bezier(.32,.72,0,1); }
+.sp-logo .sp-chev svg.ico { width: 13px; height: 13px; }
+.sp-logo:active { transform: scale(.9); }
+.spotify.live .sp-logo { color: #1db954; }
+.spotify.open .sp-logo .sp-chev { transform: rotate(180deg); }
+
+.sp-panel {
+  width: 100%; overflow: hidden;
+  display: grid; grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .32s cubic-bezier(.32,.72,0,1), opacity .22s ease;
 }
-.spotify button svg.ico { width: 16px; height: 16px; }
-.spotify button:active { background: var(--accent); transform: scale(.92); }
+.spotify.open .sp-panel { grid-template-rows: 1fr; opacity: 1; }
+.sp-panel > * { min-height: 0; }
+.sp-inner, .sp-panel .sp-track { }
+.sp-track {
+  text-align: center; font-size: 12.5px; color: var(--muted); padding: 2px 4px 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sp-track b { color: var(--text); font-weight: 700; }
+.sp-track span { color: var(--dim); }
+.sp-track b + span::before { content: " · "; }
+.sp-ctrl { display: flex; align-items: center; justify-content: center; gap: 16px; padding-bottom: 6px; }
+.sp-ctrl button {
+  background: none; border: none; color: var(--muted); width: 40px; height: 40px;
+  border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color .15s ease, background .15s ease, transform .1s ease;
+}
+.sp-ctrl button svg.ico { width: 19px; height: 19px; }
+.sp-ctrl button.main { background: var(--s2); color: var(--text); width: 48px; height: 48px; }
+.sp-ctrl button.main svg.ico { width: 20px; height: 20px; }
+.sp-ctrl button:active { color: #1db954; transform: scale(.88); }
+
+/* ---- cloud sync ---- */
+.sync-state { font-weight: 700; }
+.sync-state.ok { color: var(--ok); }
+.sync-state.busy { color: var(--accent); }
+.sync-state.err { color: var(--alert); }
+.sync-state.off { color: var(--dim); }
+.sync-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; background: var(--dim); vertical-align: middle; }
+.sync-dot.ok { background: var(--ok); }
+.sync-dot.busy { background: var(--accent); animation: fade .8s infinite alternate; }
+.sync-dot.err { background: var(--alert); }
+.meta.code {
+  font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--accent);
+  background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; margin-top: 8px;
+  cursor: pointer; word-break: break-all; user-select: all; -webkit-user-select: all;
+}
 
 /* ---- nastavení ---- */
-.setrow { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+.setrow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+.setrow.pair { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .stepchip {
-  flex: 1; min-width: 40px; padding: 10px 0; border-radius: var(--r-sm); border: 1px solid var(--line);
-  background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 800;
+  padding: 10px 0; border-radius: var(--r-sm); border: 1px solid var(--line);
+  background: transparent; color: var(--muted); font-family: inherit; font-size: 11.5px; font-weight: 800;
   cursor: pointer; font-variant-numeric: tabular-nums; transition: background .12s ease;
 }
 .stepchip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -283,19 +385,24 @@ textarea.io {
   <div id="app"></div>
   <script>
 // ============================================================
-// TRÉNINKOVÝ PLÁN – staženo z app.trenerpetr.cz (4. 8. 2026)
+// TRÉNINKOVÝ PLÁN – staženo z app.trenerpetr.cz
 // Vlastní split · Pokročilý · 4× týdně · třítýdenní rotace
-// sets: type prep = rozcvičovací, work = pracovní; from–to = rozsah opakování
-// step = krok tlačítek ±kg, rest = pauza mezi pracovními sety (prep má kratší)
+//
+// sets: type prep = rozcvičovací, work = pracovní
+//       from–to = cílový rozsah opakování
+//       kg = výchozí váha PRO TENHLE SET (prep bývá lehčí než pracovní)
+// Váhy označené ★ jsou reálné z tréninku 26. 7. 2026, zbytek je odhad
+// – po prvním odcvičení si je appka přepíše tvými čísly.
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 5,
+  version: 6,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
+  // kolik tréninků po sobě musíš dát horní hranici, než appka přidá kilo
+  progressAfter: 2,
   // běžný týden – 1 = pondělí … 7 = neděle
   schedule: { 1: "A", 2: "B", 4: "C", 5: "D" },
   // konkrétní dny přebíjejí běžný rozvrh (null = volno)
-  // tenhle týden: Po a Út padly, rotace startuje ve středu
   overrides: {
     "2026-08-03": null,
     "2026-08-04": null,
@@ -311,33 +418,59 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "chest-upper-incline-smith-bench", name: "Tlaky na šikmé lavici v multipressu",
-          sub: "Vrchní část prsou", part: "Prsa", step: 5, defaultWeight: 40, rest: 155, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 4, to: 6 }, { type: "work", from: 8, to: 10 }],
+          sub: "Vrchní část prsou", part: "Prsa", step: 5, rest: 155, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 25 },
+            { type: "prep", from: 8, to: 10, kg: 30 },
+            { type: "work", from: 4, to: 6, kg: 45 },
+            { type: "work", from: 8, to: 10, kg: 40 }, // ★
+          ],
         },
         {
           id: "chest-mid-flat-dumbbell-bench", name: "Tlaky na rovné lavici s jednoručkami",
-          sub: "Středy a spodky prsou", part: "Prsa", step: 2, defaultWeight: 24, rest: 125, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Středy a spodky prsou", part: "Prsa", step: 2, rest: 125, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 17 }, // ★
+            { type: "work", from: 8, to: 10, kg: 25 }, // ★
+            { type: "work", from: 8, to: 10, kg: 22 }, // ★
+          ],
         },
         {
           id: "chest-fly-machine", name: "Rozpažování na rovné lavici s jednoručkami",
-          sub: "Prsa", part: "Prsa", step: 2, defaultWeight: 12, rest: 95, restPrep: 80,
-          sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
+          sub: "Prsa", part: "Prsa", step: 2, rest: 95, restPrep: 80,
+          sets: [
+            { type: "work", from: 10, to: 15, kg: 31 }, // ★
+            { type: "work", from: 10, to: 15, kg: 31 }, // ★
+            { type: "work", from: 10, to: 15, kg: 31 },
+          ],
         },
         {
           id: "shoulders-side-dumbbell-lateral", name: "Upažování s jednoručkami",
-          sub: "Boční delty", part: "Ramena", step: 1, defaultWeight: 8, rest: 95, restPrep: 65,
-          sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
+          sub: "Boční delty", part: "Ramena", step: 1, rest: 95, restPrep: 65,
+          sets: [
+            { type: "work", from: 10, to: 15, kg: 7 }, // ★
+            { type: "work", from: 10, to: 15, kg: 8 }, // ★
+            { type: "work", from: 10, to: 15, kg: 8 },
+          ],
         },
         {
           id: "triceps-lateral-pushdown", name: "Stahování kladky",
-          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, defaultWeight: 25, rest: 95, restPrep: 65,
-          sets: [{ type: "prep", from: 10, to: 12 }, { type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, rest: 95, restPrep: 65,
+          sets: [
+            { type: "prep", from: 10, to: 12, kg: 15 },
+            { type: "prep", from: 10, to: 12, kg: 20 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+          ],
         },
         {
           id: "triceps-long-seated-flat-smith-french-press", name: "Francouzské tlaky vstoje v multipressu",
-          sub: "Dlouhá hlava", part: "Triceps", step: 5, defaultWeight: 25, rest: 125, restPrep: 80,
-          sets: [{ type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Dlouhá hlava", part: "Triceps", step: 5, rest: 125, restPrep: 80,
+          sets: [
+            { type: "prep", from: 10, to: 12, kg: 15 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+          ],
         },
       ],
     },
@@ -346,33 +479,57 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "back-lower-close-neutral-row", name: "Veslování úzkým paralelním úchopem",
-          sub: "Spodní část zad", part: "Záda", step: 5, defaultWeight: 55, rest: 155, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Spodní část zad", part: "Záda", step: 5, rest: 155, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 35 },
+            { type: "prep", from: 8, to: 10, kg: 45 },
+            { type: "work", from: 8, to: 10, kg: 55 },
+            { type: "work", from: 8, to: 10, kg: 55 },
+          ],
         },
         {
           id: "back-mid-smith-wide-row", name: "Veslování širokým úchopem nadhmatem",
-          sub: "Střed zad", part: "Záda", step: 5, defaultWeight: 40, rest: 125, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Střed zad", part: "Záda", step: 5, rest: 125, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 30 },
+            { type: "work", from: 8, to: 10, kg: 40 },
+            { type: "work", from: 8, to: 10, kg: 40 },
+          ],
         },
         {
           id: "back-lats-upper-wide-pulldown", name: "Stahování horní kladky širokým úchopem",
-          sub: "Latissimy – horní a vnější vlákna", part: "Záda", step: 5, defaultWeight: 55, rest: 125, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Latissimy – horní a vnější vlákna", part: "Záda", step: 5, rest: 125, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 40 },
+            { type: "work", from: 8, to: 10, kg: 55 },
+            { type: "work", from: 8, to: 10, kg: 55 },
+          ],
         },
         {
           id: "back-lats-lower-close-pulldown", name: "Stahování horní kladky úzkým paralelním úchopem",
-          sub: "Latissimy – spodní a střední vlákna", part: "Záda", step: 5, defaultWeight: 50, rest: 125, restPrep: 95,
-          sets: [{ type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Latissimy – spodní a střední vlákna", part: "Záda", step: 5, rest: 125, restPrep: 95,
+          sets: [
+            { type: "work", from: 8, to: 10, kg: 50 },
+            { type: "work", from: 8, to: 10, kg: 50 },
+          ],
         },
         {
           id: "biceps-both-dumbbell-curl", name: "Zdvihy s jednoručkami bez vytáčení",
-          sub: "Dlouhá a krátká hlava", part: "Biceps", step: 1, defaultWeight: 12, rest: 95, restPrep: 65,
-          sets: [{ type: "prep", from: 10, to: 12 }, { type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Dlouhá a krátká hlava", part: "Biceps", step: 1, rest: 95, restPrep: 65,
+          sets: [
+            { type: "prep", from: 10, to: 12, kg: 8 },
+            { type: "prep", from: 10, to: 12, kg: 10 },
+            { type: "work", from: 8, to: 10, kg: 12 },
+            { type: "work", from: 8, to: 10, kg: 12 },
+          ],
         },
         {
           id: "biceps-short-preacher-curl", name: "Scottova lavice",
-          sub: "Krátká hlava", part: "Biceps", step: 2.5, defaultWeight: 20, rest: 95, restPrep: 65,
-          sets: [{ type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Krátká hlava", part: "Biceps", step: 2.5, rest: 95, restPrep: 65,
+          sets: [
+            { type: "work", from: 8, to: 10, kg: 20 },
+            { type: "work", from: 8, to: 10, kg: 20 },
+          ],
         },
       ],
     },
@@ -381,23 +538,43 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "legs-hams-lying-leg-curl", name: "Zakopávání vleže",
-          sub: "Zadní stehna", part: "Nohy", step: 5, defaultWeight: 35, rest: 125, restPrep: 95,
-          sets: [{ type: "prep", from: 10, to: 15 }, { type: "prep", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
+          sub: "Zadní stehna", part: "Nohy", step: 5, rest: 125, restPrep: 95,
+          sets: [
+            { type: "prep", from: 10, to: 15, kg: 25 },
+            { type: "prep", from: 10, to: 15, kg: 30 },
+            { type: "work", from: 10, to: 15, kg: 35 },
+            { type: "work", from: 10, to: 15, kg: 35 },
+          ],
         },
         {
           id: "legs-quads-leg-press", name: "Leg press",
-          sub: "Přední stehna", part: "Nohy", step: 10, defaultWeight: 120, rest: 185, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Přední stehna", part: "Nohy", step: 10, rest: 185, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 80 },
+            { type: "prep", from: 8, to: 10, kg: 100 },
+            { type: "work", from: 8, to: 10, kg: 120 },
+            { type: "work", from: 8, to: 10, kg: 120 },
+          ],
         },
         {
           id: "legs-quads-seated-leg-extension", name: "Předkopávání vsedě",
-          sub: "Přední stehna", part: "Nohy", step: 5, defaultWeight: 45, rest: 125, restPrep: 80,
-          sets: [{ type: "prep", from: 10, to: 15 }, { type: "prep", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
+          sub: "Přední stehna", part: "Nohy", step: 5, rest: 125, restPrep: 80,
+          sets: [
+            { type: "prep", from: 10, to: 15, kg: 30 },
+            { type: "prep", from: 10, to: 15, kg: 40 },
+            { type: "work", from: 10, to: 15, kg: 45 },
+            { type: "work", from: 10, to: 15, kg: 45 },
+          ],
         },
         {
           id: "legs-calves-seated-calf-raise", name: "Výpony vsedě",
-          sub: "Lýtka", part: "Nohy", step: 5, defaultWeight: 40, rest: 80, restPrep: 65,
-          sets: [{ type: "work", from: 15, to: 25 }, { type: "work", from: 15, to: 25 }, { type: "work", from: 15, to: 25 }, { type: "work", from: 15, to: 25 }],
+          sub: "Lýtka", part: "Nohy", step: 5, rest: 80, restPrep: 65,
+          sets: [
+            { type: "work", from: 15, to: 25, kg: 40 },
+            { type: "work", from: 15, to: 25, kg: 40 },
+            { type: "work", from: 15, to: 25, kg: 40 },
+            { type: "work", from: 15, to: 25, kg: 40 },
+          ],
         },
       ],
     },
@@ -406,33 +583,59 @@ const DEFAULT_PLAN = {
       exercises: [
         {
           id: "chest-upper-incline-smith-bench", name: "Tlaky na šikmé lavici v multipressu",
-          sub: "Vrchní část prsou", part: "Prsa", step: 5, defaultWeight: 40, rest: 155, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "prep", from: 8, to: 10 }, { type: "work", from: 4, to: 6 }, { type: "work", from: 8, to: 10 }],
+          sub: "Vrchní část prsou", part: "Prsa", step: 5, rest: 155, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 25 },
+            { type: "prep", from: 8, to: 10, kg: 30 },
+            { type: "work", from: 4, to: 6, kg: 45 },
+            { type: "work", from: 8, to: 10, kg: 40 },
+          ],
         },
         {
           id: "chest-mid-flat-dumbbell-bench", name: "Tlaky na rovné lavici s jednoručkami",
-          sub: "Středy a spodky prsou", part: "Prsa", step: 2, defaultWeight: 24, rest: 125, restPrep: 95,
-          sets: [{ type: "prep", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Středy a spodky prsou", part: "Prsa", step: 2, rest: 125, restPrep: 95,
+          sets: [
+            { type: "prep", from: 8, to: 10, kg: 17 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+            { type: "work", from: 8, to: 10, kg: 22 },
+          ],
         },
         {
           id: "chest-fly-machine", name: "Rozpažování na rovné lavici s jednoručkami",
-          sub: "Prsa", part: "Prsa", step: 2, defaultWeight: 12, rest: 95, restPrep: 80,
-          sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
+          sub: "Prsa", part: "Prsa", step: 2, rest: 95, restPrep: 80,
+          sets: [
+            { type: "work", from: 10, to: 15, kg: 31 },
+            { type: "work", from: 10, to: 15, kg: 31 },
+            { type: "work", from: 10, to: 15, kg: 31 },
+          ],
         },
         {
           id: "shoulders-side-dumbbell-lateral", name: "Upažování s jednoručkami",
-          sub: "Boční delty", part: "Ramena", step: 1, defaultWeight: 8, rest: 95, restPrep: 65,
-          sets: [{ type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }, { type: "work", from: 10, to: 15 }],
+          sub: "Boční delty", part: "Ramena", step: 1, rest: 95, restPrep: 65,
+          sets: [
+            { type: "work", from: 10, to: 15, kg: 7 },
+            { type: "work", from: 10, to: 15, kg: 8 },
+            { type: "work", from: 10, to: 15, kg: 8 },
+          ],
         },
         {
           id: "triceps-lateral-pushdown", name: "Stahování kladky",
-          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, defaultWeight: 25, rest: 95, restPrep: 65,
-          sets: [{ type: "prep", from: 10, to: 12 }, { type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, rest: 95, restPrep: 65,
+          sets: [
+            { type: "prep", from: 10, to: 12, kg: 15 },
+            { type: "prep", from: 10, to: 12, kg: 20 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+          ],
         },
         {
           id: "triceps-long-seated-flat-smith-french-press", name: "Francouzské tlaky vstoje v multipressu",
-          sub: "Dlouhá hlava", part: "Triceps", step: 5, defaultWeight: 25, rest: 125, restPrep: 80,
-          sets: [{ type: "prep", from: 10, to: 12 }, { type: "work", from: 8, to: 10 }, { type: "work", from: 8, to: 10 }],
+          sub: "Dlouhá hlava", part: "Triceps", step: 5, rest: 125, restPrep: 80,
+          sets: [
+            { type: "prep", from: 10, to: 12, kg: 15 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+            { type: "work", from: 8, to: 10, kg: 25 },
+          ],
         },
       ],
     },
@@ -474,68 +677,225 @@ const I = {
   undo: () => ICO('<path d="M3 8h11a6 6 0 010 12h-5M3 8l4-4M3 8l4 4"/>'),
   bulb: () => ICO('<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.5.4.8 1 .8 1.6V16h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0012 3z"/>'),
   layers: () => ICO('<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/>'),
+  cloud: () => ICO('<path d="M17.5 19a4.5 4.5 0 00.5-8.97A6 6 0 006.1 10.5 3.75 3.75 0 006.5 19z"/>'),
+  chevronD: () => ICO('<path d="M5 9l7 7 7-7"/>'),
+  chevronU: () => ICO('<path d="M5 15l7-7 7 7"/>'),
+  // Spotify – oficiální tvar (kruh se třemi vlnami)
+  spotify: () => `<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.601.301.98zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`,
 };
 
 </script>
   <script>
 // ============================================================
-// SPOTIFY – ovládá Spotify desktop app na Macu přes lokální server
-// (server.py → AppleScript). Žádné API, žádný client ID, žádný login.
-// Když server nebo Spotify neběží, lišta se prostě nezobrazí a appka jede dál.
-// Pro iPhone build se místo tohohle použije Spotify Web API.
+// SPOTIFY – ovládá Spotify desktop app na Macu (server.py → AppleScript).
+// Sbalené = jen logo. Rozbalené = celý playbar. Stav se pamatuje.
+// Na webové verzi (GitHub Pages) most neexistuje, lišta se nezobrazí.
 // ============================================================
 "use strict";
 
-// AppleScript most běží jen na Macu. Na webové verzi (GitHub Pages) lišta odpadá.
 const SPOTIFY_LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname) ||
   /^192\.168\.|^10\./.test(location.hostname);
 
 const SpotifyUI = {
   state: { ok: false, track: "", artist: "", playing: false, reason: "" },
-  _pending: false,
+  open: localStorage.getItem("sp_open") === "1",
 
   async init() { if (SPOTIFY_LOCAL) await this.poll(); },
+
+  toggleOpen() {
+    this.open = !this.open;
+    localStorage.setItem("sp_open", this.open ? "1" : "0");
+    document.querySelectorAll(".spotify").forEach((el) => el.classList.toggle("open", this.open));
+    if (this.open) this.poll();
+  },
 
   async call(cmd) {
     try {
       const r = await fetch("/api/spotify/" + cmd, { cache: "no-store" });
       this.state = await r.json();
-    } catch {
-      this.state = { ok: false, reason: "server offline" };
-    }
+    } catch { this.state = { ok: false, reason: "server offline" }; }
     this.paint();
   },
 
   async poll() {
     await this.call("now");
     clearTimeout(this._t);
-    this._t = setTimeout(() => this.poll(), 8000);
+    if (this.open) this._t = setTimeout(() => this.poll(), 8000);
   },
 
   paint() {
-    const el = document.getElementById("spTrack");
-    if (el) el.innerHTML = this.label();
-    const pb = document.getElementById("spPlay");
-    if (pb) pb.innerHTML = this.state.playing ? I.pause() : I.play();
+    document.querySelectorAll("[data-sp-track]").forEach((el) => (el.innerHTML = this.label()));
+    document.querySelectorAll("[data-sp-play]").forEach((el) => (el.innerHTML = this.state.playing ? I.pause() : I.play()));
+    document.querySelectorAll(".spotify").forEach((el) => el.classList.toggle("live", !!this.state.playing));
   },
 
   label() {
     if (!this.state.ok) return esc(this.state.reason || "Spotify nedostupné");
-    return `<b style="color:var(--text)">${esc(this.state.track)}</b> · ${esc(this.state.artist)}`;
+    return `<b>${esc(this.state.track)}</b><span>${esc(this.state.artist)}</span>`;
   },
 
   bar() {
     if (!SPOTIFY_LOCAL) return "";
-    return `<div class="spotify">
-      <div class="track" id="spTrack">${this.label()}</div>
-      <button onclick="spCmd('prev')">${I.prev()}</button>
-      <button id="spPlay" onclick="spCmd('toggle')">${this.state.playing ? I.pause() : I.play()}</button>
-      <button onclick="spCmd('next')">${I.next()}</button>
+    return `<div class="spotify ${this.open ? "open" : ""} ${this.state.playing ? "live" : ""}">
+      <button class="sp-logo" onclick="SpotifyUI.toggleOpen()" aria-label="Spotify">
+        ${I.spotify()}<i class="sp-chev">${I.chevronU()}</i>
+      </button>
+      <div class="sp-panel">
+        <div class="sp-track" data-sp-track>${this.label()}</div>
+        <div class="sp-ctrl">
+          <button onclick="spCmd('prev')" aria-label="Předchozí">${I.prev()}</button>
+          <button class="main" data-sp-play onclick="spCmd('toggle')" aria-label="Přehrát">${this.state.playing ? I.pause() : I.play()}</button>
+          <button onclick="spCmd('next')" aria-label="Další">${I.next()}</button>
+        </div>
+      </div>
     </div>`;
   },
 };
 
 async function spCmd(cmd) { await SpotifyUI.call(cmd); }
+
+</script>
+  <script>
+// ============================================================
+// CLOUD SYNC – jsonblob.com
+// Free, bez účtu a bez klíče. Data leží pod náhodným UUID ("sync kód"),
+// kdo ho zná, ten je vidí – proto se tam posílají JEN tréninková čísla,
+// žádné jméno, mail ani nic osobního.
+// localStorage zůstává hlavní zdroj, cloud je zrcadlo pro druhé zařízení.
+// ============================================================
+"use strict";
+
+const Sync = {
+  API: "https://jsonblob.com/api/jsonBlob",
+  get id() { return localStorage.getItem("sync_id") || null; },
+  set id(v) { v ? localStorage.setItem("sync_id", v) : localStorage.removeItem("sync_id"); },
+  get last() { return localStorage.getItem("sync_last") || null; },
+  status: "off", // off | ok | busy | err
+  msg: "",
+  enabled() { return !!this.id; },
+
+  url() { return `${this.API}/${this.id}`; },
+
+  // založí nový sync a nahraje, co mám teď
+  async create() {
+    this.status = "busy"; paintSync();
+    try {
+      const r = await fetch(this.API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(this.payload()),
+      });
+      const loc = r.headers.get("Location") || "";
+      const id = loc.split("/").pop();
+      if (!id) throw new Error("cloud nevrátil kód");
+      this.id = id;
+      this.done("ok", "sync zapnutý");
+      return id;
+    } catch (e) { this.done("err", e.message); return null; }
+  },
+
+  // připojí se k existujícímu kódu a stáhne data
+  async connect(id) {
+    id = (id || "").trim();
+    if (!id) return false;
+    this.status = "busy"; paintSync();
+    try {
+      const r = await fetch(`${this.API}/${id}`, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (!r.ok) throw new Error("kód nenalezen");
+      const data = await r.json();
+      this.id = id;
+      this.merge(data);
+      this.done("ok", "napojeno a staženo");
+      return true;
+    } catch (e) { this.done("err", e.message); return false; }
+  },
+
+  payload() {
+    return { v: 1, updated: new Date().toISOString(), history, overrides, planVersion: plan.version };
+  },
+
+  queue() {
+    if (!this.enabled()) return;
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.push(), 1500);
+  },
+
+  async push() {
+    if (!this.enabled()) return;
+    this.status = "busy"; paintSync();
+    try {
+      const r = await fetch(this.url(), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(this.payload()),
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      this.done("ok", "uloženo");
+    } catch (e) { this.done("err", e.message); }
+  },
+
+  async pull(silent) {
+    if (!this.enabled()) return;
+    if (!silent) { this.status = "busy"; paintSync(); }
+    try {
+      const r = await fetch(this.url(), { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const changed = this.merge(await r.json());
+      this.done("ok", changed ? "staženo z cloudu" : "aktuální");
+      if (changed) render();
+    } catch (e) { this.done("err", e.message); }
+  },
+
+  // sloučení: tréninky se klíčují datem + tréninkem, vyhrává ten s víc sety
+  merge(data) {
+    if (!data || !Array.isArray(data.history)) return false;
+    const key = (h) => `${h.date}|${h.workoutId}`;
+    const map = new Map();
+    for (const h of history) map.set(key(h), h);
+    let changed = false;
+    for (const h of data.history) {
+      const k = key(h), cur = map.get(k);
+      const size = (x) => x.exercises.reduce((a, e) => a + e.sets.length, 0);
+      if (!cur || size(h) > size(cur)) { map.set(k, h); changed = true; }
+    }
+    if (changed) {
+      history = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+      localStorage.setItem("history", JSON.stringify(history));
+    }
+    if (data.overrides && JSON.stringify(data.overrides) !== JSON.stringify(overrides)) {
+      overrides = data.overrides;
+      localStorage.setItem("overrides", JSON.stringify(overrides));
+      applyOverrides();
+      changed = true;
+    }
+    return changed;
+  },
+
+  done(status, msg) {
+    this.status = status; this.msg = msg;
+    if (status === "ok") localStorage.setItem("sync_last", new Date().toISOString());
+    paintSync();
+  },
+
+  disconnect() { this.id = null; localStorage.removeItem("sync_last"); this.status = "off"; render(); },
+
+  label() {
+    if (!this.enabled()) return "vypnuto";
+    if (this.status === "busy") return "synchronizuju…";
+    if (this.status === "err") return "chyba: " + this.msg;
+    const l = this.last;
+    if (!l) return "zapnuto";
+    const d = new Date(l), mins = Math.round((Date.now() - d) / 60000);
+    return mins < 1 ? "právě teď" : mins < 60 ? `před ${mins} min` : d.toLocaleString("cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+  },
+};
+
+function paintSync() {
+  const el = document.getElementById("syncState");
+  if (el) { el.textContent = Sync.label(); el.className = "sync-state " + Sync.status; }
+  const d = document.getElementById("syncDot");
+  if (d) d.className = "sync-dot " + Sync.status;
+}
 
 </script>
   <script>
@@ -547,29 +907,22 @@ async function spCmd(cmd) { await SpotifyUI.call(cmd); }
 
 const DB = {
   get(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
-  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); Sync.queue(); },
-};
-
-// Cloud sync adapter – připraveno, zatím vypnuto (multidevice až s iPhone buildem)
-const Sync = {
-  enabled: false, endpoint: null,
-  queue() { if (!this.enabled) return; clearTimeout(this._t); this._t = setTimeout(() => this.push(), 2000); },
-  async push() {}, async pull() {},
+  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); if (typeof Sync !== "undefined") Sync.queue(); },
 };
 
 let plan = DB.get("plan", null);
 if (!plan || (plan.version || 0) < DEFAULT_PLAN.version) { plan = JSON.parse(JSON.stringify(DEFAULT_PLAN)); DB.set("plan", plan); }
-let overrides = DB.get("overrides", {}); // exId -> {step, rest, restPrep, defaultWeight}
+let overrides = DB.get("overrides", {});   // exId -> {step, rest, restPrep}
 let history = DB.get("history", []);
 let session = DB.get("session", null);
 let tab = "workout";
 let dashEx = null;
-let dashView = "list"; // list | settings
+let dashView = "list";
 
 function applyOverrides() {
   for (const w of plan.workouts) for (const e of w.exercises) {
     const o = overrides[e.id]; if (!o) continue;
-    for (const k of ["step", "rest", "restPrep", "defaultWeight"]) if (o[k] != null) e[k] = o[k];
+    for (const k of ["step", "rest", "restPrep"]) if (o[k] != null) e[k] = o[k];
   }
 }
 applyOverrides();
@@ -578,7 +931,8 @@ applyOverrides();
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const fmtW = (w) => (w % 1 === 0 ? String(w) : String(w).replace(".", ","));
+const round2 = (n) => Math.round(n * 100) / 100;
+const fmtW = (w) => (w % 1 === 0 ? String(w) : String(round2(w)).replace(".", ","));
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const today = () => iso(new Date());
 const fmtDate = (s) => `${+s.slice(8)}. ${+s.slice(5, 7)}.`;
@@ -586,7 +940,6 @@ const plural = (n, one, few, many) => (n === 1 ? one : n >= 2 && n <= 4 ? few : 
 const wo = (id) => plan.workouts.find((w) => w.id === id);
 const allEx = () => { const seen = new Set(), o = []; for (const w of plan.workouts) for (const e of w.exercises) if (!seen.has(e.id)) { seen.add(e.id); o.push(e); } return o; };
 
-// sety včetně těch, co si přidám během tréninku
 function exSets(ex) {
   const extra = (session && session.extra && session.extra[ex.id]) || 0;
   if (!extra) return ex.sets;
@@ -609,23 +962,44 @@ const lastSet = (id, i) => { const le = lastEntry(id); return le ? le.sets[Math.
 const workSets = (sets) => { const w = sets.filter((s) => s.t !== "prep"); return w.length ? w : sets; };
 const topW = (sets) => Math.max(...workSets(sets).map((s) => s.w));
 
-function recommendWeight(ex, i) {
-  const ls = lastSet(ex.id, i);
-  if (!ls) return ex.defaultWeight;
-  return ls.r >= setSpec(ex, i).to ? ls.w + ex.step : ls.w;
-}
-function predictReps(ex, i, weight) {
-  const sp = setSpec(ex, i), h = exHistory(ex.id);
-  if (!h.length) return sp.from;
-  const pts = h.map((e) => e.sets[Math.min(i, e.sets.length - 1)]).filter(Boolean);
+// ============================================================
+// PROGRESSIVE OVERLOAD
+// Kilo se přidá až po X trénincích po sobě, kdy jsi na stejné váze
+// dal horní hranici opakování a nebylo to na krev (RPE ≤ 8).
+// Dvakrát po sobě pod spodní hranicí → ubíráme.
+// ============================================================
+const progressAfter = () => plan.progressAfter || 2;
+
+function progression(ex, i) {
+  const sp = setSpec(ex, i);
+  const startKg = sp.kg ?? ex.defaultWeight ?? 0;
+  const pts = exHistory(ex.id)
+    .map((e) => ({ s: e.sets[Math.min(i, e.sets.length - 1)], rpe: e.rpe }))
+    .filter((p) => p.s);
+
+  if (!pts.length) return { w: startKg, r: sp.from, state: "start", why: "výchozí váha z plánu" };
+
   const last = pts[pts.length - 1];
-  if (!last) return sp.from;
-  if (weight > last.w) return sp.from;
-  if (weight < last.w) return Math.min(last.r + 2, sp.to);
-  const prev = pts[pts.length - 2];
-  const trend = prev && prev.w === last.w && last.r > prev.r ? 1 : 0;
-  return Math.min(last.r + trend, sp.to);
+  let streak = 0;
+  for (let k = pts.length - 1; k >= 0; k--) {
+    const p = pts[k];
+    if (p.s.w === last.s.w && p.s.r >= sp.to && (p.rpe == null || p.rpe <= 8)) streak++;
+    else break;
+  }
+  const need = progressAfter();
+  if (streak >= need) {
+    return { w: round2(last.s.w + ex.step), r: sp.from, state: "up",
+      why: `${streak}× po sobě ${sp.to} opakování → +${fmtW(ex.step)} kg` };
+  }
+  const tail = pts.slice(-2);
+  if (tail.length === 2 && tail.every((p) => p.s.w === last.s.w && p.s.r < sp.from)) {
+    return { w: Math.max(ex.step, round2(last.s.w - ex.step)), r: sp.from, state: "down",
+      why: "dvakrát po sobě pod cílem → uber a vyjeď to znovu" };
+  }
+  return { w: last.s.w, r: Math.min(last.s.r + 1, sp.to), state: "hold",
+    why: streak ? `ještě ${need - streak}× ${sp.to} opakování a přidáme kilo` : `drž ${fmtW(last.s.w)} kg a přidej opakování` };
 }
+
 const prWeight = (id) => { let p = 0; for (const e of exHistory(id)) for (const s of e.sets) if (s.w > p) p = s.w; return p; };
 
 // ---------- audio ----------
@@ -662,30 +1036,47 @@ function startWorkout(id) {
   const w = wo(id);
   session = {
     workoutId: id, workoutName: w.name, focus: w.focus, date: today(), startedAt: Date.now(),
-    exIndex: 0, setIndex: 0, phase: "work", workStart: Date.now(),
+    exIndex: 0, setIndex: 0, phase: "ready", workStart: Date.now(),
     restEnd: null, restTotal: 0, _beeped: {}, pendingW: null, pendingR: null, entries: {}, extra: {},
   };
   DB.set("session", session); keepAwake(true); tab = "workout"; render();
+}
+function letsGo() {
+  session.phase = "work"; session.startedAt = Date.now(); session.workStart = Date.now();
+  DB.set("session", session); beep(660, .08, .06); setTimeout(() => beep(990, .12, .07), 90);
+  render();
 }
 const curW = () => wo(session.workoutId);
 const curEx = () => curW().exercises[session.exIndex];
 const restFor = (ex, i) => (setSpec(ex, i).type === "prep" ? ex.restPrep || 90 : ex.rest || 120);
 
-function finishSet() {
-  const ex = curEx();
-  session.phase = "log";
-  session.pendingW = session.pendingW ?? recommendWeight(ex, session.setIndex);
-  session.pendingR = session.pendingR ?? predictReps(ex, session.setIndex, session.pendingW);
-  DB.set("session", session); render();
+// zelené bliknutí, pak akce
+function flashOk(el, fn) {
+  if (!el || el.dataset.busy) return fn && fn();
+  el.dataset.busy = "1";
+  el.classList.add("ok");
+  beep(880, .06, .05);
+  setTimeout(fn, 240);
 }
-function confirmSet() {
-  const ex = curEx();
-  const e = (session.entries[ex.id] = session.entries[ex.id] || { id: ex.id, name: ex.name, sets: [], rpe: null });
-  e.sets.push({ w: session.pendingW, r: session.pendingR, t: setSpec(ex, session.setIndex).type });
-  session.pendingW = null; session.pendingR = null;
-  if (session.setIndex >= exSets(ex).length - 1) session.phase = "rpe";
-  else startRest(restFor(ex, session.setIndex + 1));
-  DB.set("session", session); render();
+function finishSet(el) {
+  flashOk(el, () => {
+    const ex = curEx(), p = progression(ex, session.setIndex);
+    session.phase = "log";
+    session.pendingW = session.pendingW ?? p.w;
+    session.pendingR = session.pendingR ?? p.r;
+    DB.set("session", session); render();
+  });
+}
+function confirmSet(el) {
+  flashOk(el, () => {
+    const ex = curEx();
+    const e = (session.entries[ex.id] = session.entries[ex.id] || { id: ex.id, name: ex.name, sets: [], rpe: null });
+    e.sets.push({ w: session.pendingW, r: session.pendingR, t: setSpec(ex, session.setIndex).type });
+    session.pendingW = null; session.pendingR = null;
+    if (session.setIndex >= exSets(ex).length - 1) session.phase = "rpe";
+    else startRest(restFor(ex, session.setIndex + 1));
+    DB.set("session", session); render();
+  });
 }
 function startRest(sec) { session.phase = "rest"; session.restTotal = sec; session.restEnd = Date.now() + sec * 1000; session._beeped = {}; }
 function adjustRest(d) { session.restEnd += d * 1000; session.restTotal = Math.max(1, session.restTotal + d); DB.set("session", session); }
@@ -695,12 +1086,11 @@ function endRest() {
   session.phase = "work"; session.workStart = Date.now();
   DB.set("session", session); render();
 }
-// vrátit poslední uložený set (překlep ve váze/opakováních)
 function undoSet() {
   const ex = curEx(), e = session.entries[ex.id];
   if (!e || !e.sets.length) return;
   const s = e.sets.pop();
-  session.setIndex = e.sets.length; // další na řadě = kolik jich je uložených
+  session.setIndex = e.sets.length;
   session.phase = "work"; session.workStart = Date.now();
   session.pendingW = s.w; session.pendingR = s.r;
   DB.set("session", session); render();
@@ -708,7 +1098,7 @@ function undoSet() {
 function addSet() {
   const ex = curEx();
   session.extra[ex.id] = (session.extra[ex.id] || 0) + 1;
-  if (session.phase === "rpe") { session.phase = "rest"; startRest(restFor(ex, session.setIndex + 1)); session.setIndex = session.setIndex; }
+  if (session.phase === "rpe") startRest(restFor(ex, session.setIndex + 1));
   DB.set("session", session); render();
 }
 function saveRpe(v) {
@@ -728,14 +1118,15 @@ function finishWorkout() {
   };
   history.push(rec); DB.set("history", history);
   session.phase = "summary"; session.lastRecord = rec;
-  DB.set("session", session); keepAwake(false); render();
+  DB.set("session", session); keepAwake(false);
+  if (typeof Sync !== "undefined" && Sync.enabled()) Sync.push();
+  render();
 }
 function closeSummary() { session = null; DB.set("session", null); render(); }
 function abortWorkout() {
   if (!confirm("Zrušit rozdělaný trénink? Nic se neuloží.")) return;
   session = null; DB.set("session", null); keepAwake(false); render();
 }
-// ukončit cvik: co je odcvičené se uloží, jde se na RPE
 function endExercise() {
   const ex = curEx();
   if (session.entries[ex.id]?.sets.length) { session.phase = "rpe"; DB.set("session", session); return render(); }
@@ -745,7 +1136,7 @@ function endExercise() {
   DB.set("session", session); render();
 }
 
-// ---------- globální hodiny (běží i na dashboardu) ----------
+// ---------- globální hodiny ----------
 setInterval(() => {
   if (!session) return;
   if (session.phase === "work") {
@@ -755,7 +1146,7 @@ setInterval(() => {
     const left = Math.max(0, (session.restEnd - Date.now()) / 1000);
     const el = $("#restTimer"), bar = $("#restBar"), mini = $("#navRest");
     if (el) { el.textContent = fmtTime(Math.ceil(left)); el.classList.toggle("ending", left <= 10 && left > 0); }
-    if (bar) bar.style.transform = `scaleX(${Math.max(0, left / session.restTotal)})`;
+    if (bar) bar.style.transform = `scaleX(${left / session.restTotal})`;
     if (mini) mini.textContent = fmtTime(Math.ceil(left));
     const s = Math.ceil(left);
     if (s <= 10 && s > 0 && !session._beeped[s]) { session._beeped[s] = 1; beep(s <= 3 ? 1150 : 880, 0.08, 0.07); }
@@ -768,18 +1159,20 @@ function render() {
   let html;
   if (tab === "dash") html = dashView === "settings" ? viewSettings() : dashEx ? viewExDetail(dashEx) : viewDash();
   else if (!session) html = viewHome();
+  else if (session.phase === "ready") html = viewReady();
   else if (session.phase === "work") html = viewWork();
   else if (session.phase === "log") html = viewLog();
   else if (session.phase === "rest") html = viewRest();
   else if (session.phase === "rpe") html = viewRpe();
   else html = viewSummary();
-  $("#app").innerHTML = html + viewNav();
+  $("#app").innerHTML = html + (session && session.phase === "ready" ? "" : viewNav());
   if (tab === "dash" && dashEx && dashView !== "settings") drawChart("chartW", exHistory(dashEx).map((e) => ({ v: topW(e.sets) })));
+  if (typeof paintSync === "function") paintSync();
 }
 function viewNav() {
   const resting = session && session.phase === "rest" && tab !== "workout";
   return `<nav>
-    <button class="${tab === "workout" ? "active" : ""}" onclick="switchTab('workout')">${I.dumbbell()}${resting ? `<b id="navRest" style="color:var(--gold)">--:--</b>` : "Trénink"}${session && !resting ? '<i class="live"></i>' : ""}</button>
+    <button class="${tab === "workout" ? "active" : ""}" onclick="switchTab('workout')">${I.dumbbell()}${resting ? `<b id="navRest">--:--</b>` : "Trénink"}${session && !resting ? '<i class="live"></i>' : ""}</button>
     <button class="${tab === "dash" ? "active" : ""}" onclick="switchTab('dash')">${I.chart()}Dashboardy</button>
   </nav>`;
 }
@@ -792,10 +1185,9 @@ function weekDays() {
   const mon = new Date(now); mon.setDate(now.getDate() - off); mon.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    const key = iso(d);
-    const ov = plan.overrides || {};
-    const workoutId = key in ov ? ov[key] : plan.schedule[i + 1] || null;
-    return { date: d, key, dow: DOW[i], num: d.getDate(), workoutId,
+    const key = iso(d), ov = plan.overrides || {};
+    return { date: d, key, dow: DOW[i], num: d.getDate(),
+      workoutId: key in ov ? ov[key] : plan.schedule[i + 1] || null,
       done: history.find((h) => h.date === key) || null, isToday: key === today() };
   });
 }
@@ -852,40 +1244,64 @@ function viewHome() {
   </div>`;
 }
 
-// ---------- workout ----------
+// ---------- LET'S GET IT ----------
+function viewReady() {
+  const w = curW();
+  const list = w.exercises.map((e) => `<li>${esc(e.name)}</li>`).join("");
+  return `<div class="ready">
+    <button class="back" onclick="abortWorkout()">${I.close()}</button>
+    <div class="ready-in">
+      <div class="kicker">${esc(w.focus)}</div>
+      <div class="ready-title">${esc(w.name)}</div>
+      <ul class="ready-list">${list}</ul>
+      <button class="btn btn-primary btn-huge" onclick="letsGo()">${I.bolt()}Let's get it</button>
+    </div>
+  </div>`;
+}
+
+// ---------- trénink ----------
 function head(ex) {
-  const w = curW(), sets = exSets(ex), sp = setSpec(ex, session.setIndex);
+  const sets = exSets(ex), sp = setSpec(ex, session.setIndex);
   const dots = sets.map((s, i) => `<i class="${i < session.setIndex ? "done" : i === session.setIndex ? "cur" : ""} ${s.type === "prep" ? "prep" : ""}"></i>`).join("");
   return `<div class="topbar"><button class="back" onclick="abortWorkout()">${I.close()}</button></div>
   <div class="ex-head">
-    <div class="sub" style="margin:0 0 8px">${esc(w.name)} · cvik ${session.exIndex + 1}/${w.exercises.length}</div>
-    <div class="ex-sub">${esc(ex.sub)}</div>
     <div class="ex-name">${esc(ex.name)}</div>
     <div class="setdots">${dots}</div>
-    <div class="ex-set">Set ${session.setIndex + 1}/${sets.length} <span class="type">· ${sp.type === "prep" ? "přípravný" : "pracovní"}${sp.bonus ? " +" : ""}</span></div>
-    <div class="ex-target">cíl ${sp.from}–${sp.to} opakování</div>
+    <div class="ex-set">${sp.type === "prep" ? "Přípravný" : "Pracovní"}${sp.bonus ? " +" : ""} <span>· cíl ${sp.from}–${sp.to} op.</span></div>
+  </div>`;
+}
+function statsBlock(ex, i) {
+  const ls = lastSet(ex.id, i), p = progression(ex, i);
+  const pred = `<div class="stat ${p.state}">
+      <div class="k">Predikce</div>
+      <div class="v">${p.r} op.</div>
+      <div class="v">${fmtW(p.w)} kg</div>
+    </div>`;
+  if (!ls) {
+    return `<div class="stats one">
+      <div class="stat start"><div class="k">Plán</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div>
+    </div>`;
+  }
+  return `<div class="stats">
+    <div class="stat"><div class="k">Minule</div><div class="v">${ls.r} op.</div><div class="v">${fmtW(ls.w)} kg</div></div>
+    ${pred}
   </div>`;
 }
 function viewWork() {
   const ex = curEx(), i = session.setIndex;
-  const ls = lastSet(ex.id, i), rec = recommendWeight(ex, i), pred = predictReps(ex, i, rec);
   const logged = session.entries[ex.id]?.sets.length || 0;
   return `<div class="screen">
     ${head(ex)}
-    <div class="chips">
-      ${ls ? `<div class="chip">${I.history()}naposledy <b>${ls.r}×</b> @ <b>${fmtW(ls.w)} kg</b></div>` : `<div class="chip">${I.history()}první záznam</div>`}
-      <div class="chip accent">${I.target()}doporučeno <b>${fmtW(rec)} kg</b></div>
-      <div class="chip violet">${I.arrowUp()}predikce <b>${pred} op.</b></div>
-    </div>
+    ${statsBlock(ex, i)}
     <div class="timer-wrap">
       <div class="timer work" id="workTimer">0:00</div>
       <div class="timer-label">${I.clock()}Work time</div>
     </div>
-    <button class="btn btn-primary" onclick="finishSet()">${I.check()}Set hotový</button>
+    <button class="btn btn-primary" onclick="finishSet(this)">${I.check()}Set hotový</button>
     <div class="btn-row">
-      ${logged ? `<button class="btn btn-ghost" style="opacity:.55" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
-      <button class="btn btn-ghost" style="opacity:.55" onclick="addSet()">${I.plus()}Set navíc</button>
-      <button class="btn btn-ghost" style="opacity:.45" onclick="endExercise()">${I.skip()}Konec cviku</button>
+      ${logged ? `<button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit set</button>` : ""}
+      <button class="btn btn-3" onclick="addSet()">${I.plus()}Set navíc</button>
+      <button class="btn btn-3" onclick="endExercise()">${I.skip()}Konec cviku</button>
     </div>
     ${SpotifyUI.bar()}
   </div>`;
@@ -910,14 +1326,14 @@ function viewLog() {
         <button class="step-btn" onclick="bumpR(1)">${I.plus()}<span>1</span></button>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="confirmSet()">${I.check()}Uložit set</button>
+    <button class="btn btn-primary" onclick="confirmSet(this)">${I.check()}Uložit set</button>
   </div>`;
 }
-function bumpW(d) { session.pendingW = Math.max(0, Math.round((session.pendingW + d * curEx().step) * 100) / 100); $("#wVal").innerHTML = `${fmtW(session.pendingW)}<small> kg</small>`; DB.set("session", session); }
+function bumpW(d) { session.pendingW = Math.max(0, round2(session.pendingW + d * curEx().step)); $("#wVal").innerHTML = `${fmtW(session.pendingW)}<small> kg</small>`; DB.set("session", session); }
 function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rVal").textContent = session.pendingR; DB.set("session", session); }
 
 function viewRest() {
-  const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1, sp = setSpec(ex, nextIdx);
+  const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   return `<div class="screen">
     ${head(ex)}
     <div class="timer-wrap">
@@ -925,29 +1341,27 @@ function viewRest() {
       <div class="timer-label">${I.clock()}Rest</div>
       <div class="rest-bar"><i id="restBar"></i></div>
     </div>
-    <div class="center muted">další: set ${nextIdx + 1}/${exSets(ex).length} · ${sp.from}–${sp.to} op. · ${esc(ex.name)}</div>
-    <div class="spacer"></div>
-    <button class="btn btn-blue" onclick="endRest()">${I.bolt()}Jdu na set</button>
+    ${statsBlock(ex, nextIdx)}
+    <button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>
     <div class="btn-row">
-      <button class="btn btn-ghost" onclick="adjustRest(-30)">${I.minus()}30 s</button>
-      <button class="btn btn-ghost" onclick="adjustRest(30)">${I.plus()}30 s</button>
+      <button class="btn btn-2" onclick="adjustRest(-30)">${I.minus()}30 s</button>
+      <button class="btn btn-2" onclick="adjustRest(30)">${I.plus()}30 s</button>
     </div>
-    <div class="btn-row"><button class="btn btn-ghost" style="opacity:.5" onclick="undoSet()">${I.undo()}Vrátit poslední set</button></div>
+    <div class="btn-row"><button class="btn btn-3" onclick="undoSet()">${I.undo()}Vrátit poslední set</button></div>
     ${SpotifyUI.bar()}
   </div>`;
 }
 function viewRpe() {
   const ex = curEx(), sets = session.entries[ex.id].sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ");
   return `<div class="screen">
-    <div class="ex-head" style="margin-top:26px">
-      <div class="ex-sub">${esc(ex.sub)}</div>
+    <div class="ex-head" style="margin-top:24px">
       <div class="ex-name">${esc(ex.name)}</div>
-      <div class="ex-set">Hotovo · ${sets}</div>
+      <div class="ex-set" style="margin-top:8px">Hotovo · ${sets}</div>
       <div class="ex-target">Jak náročné to bylo? RPE 1–10</div>
     </div>
     <div class="rpe-grid">${[1,2,3,4,5,6,7,8,9,10].map((v) => `<button class="rpe-btn" onclick="saveRpe(${v})">${v}</button>`).join("")}</div>
     <div class="center muted">1 = pohoda · 10 = absolutní selhání</div>
-    <div class="btn-row"><button class="btn btn-ghost" style="opacity:.5" onclick="addSet()">${I.plus()}Ještě jeden set</button></div>
+    <div class="btn-row"><button class="btn btn-3" onclick="addSet()">${I.plus()}Ještě jeden set</button></div>
   </div>`;
 }
 function viewSummary() {
@@ -977,25 +1391,15 @@ function viewSummary() {
 function recos() {
   const out = [];
   for (const ex of allEx()) {
-    const h = exHistory(ex.id);
-    if (!h.length) continue;
-    const last = h[h.length - 1], sp = ex.sets[ex.sets.length - 1];
-    const tw = topW(last.sets), ws = workSets(last.sets);
-    const hitTop = ws.every((s) => s.r >= sp.to);
-    const belowBottom = ws.some((s) => s.r < sp.from);
-    const sameW = h.slice(-3).filter((e) => topW(e.sets) === tw).length;
-    if (h.length >= 3 && sameW >= 3 && !hitTop) {
-      out.push({ p: 1, ex, txt: `Stojí 3 tréninky na ${fmtW(tw)} kg. Zkus deload na ${fmtW(Math.round(tw * 0.9 / ex.step) * ex.step)} kg a vyjeď to znovu.` });
-    } else if (hitTop && (last.rpe == null || last.rpe <= 8)) {
-      out.push({ p: 0, ex, txt: `Dal jsi horní hranici opakování${last.rpe ? ` při RPE ${last.rpe}` : ""}. Jdi na ${fmtW(tw + ex.step)} kg.` });
-    } else if (last.rpe >= 9 && belowBottom) {
-      out.push({ p: 2, ex, txt: `RPE ${last.rpe} a pod cílový rozsah. Drž ${fmtW(tw)} kg, dokud nedáš ${sp.from}+ opakování.` });
-    }
+    if (!exHistory(ex.id).length) continue;
+    const i = ex.sets.length - 1, p = progression(ex, i);
+    if (p.state === "hold") continue;
+    out.push({ ex, p, prio: p.state === "up" ? 0 : p.state === "down" ? 1 : 2 });
   }
-  return out.sort((a, b) => a.p - b.p);
+  return out.sort((a, b) => a.prio - b.prio);
 }
 function weekStats() {
-  const days = weekDays(), keys = days.map((d) => d.key);
+  const keys = weekDays().map((d) => d.key);
   const hs = history.filter((h) => keys.includes(h.date));
   const sets = hs.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.length, 0), 0);
   const ton = hs.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
@@ -1008,10 +1412,13 @@ function viewDash() {
   const ws = weekStats(), rc = recos();
   const cards = allEx().map((e) => {
     const h = exHistory(e.id), last = h.length ? h[h.length - 1] : null;
+    const p = progression(e, e.sets.length - 1);
     return `<div class="card" onclick="openEx('${e.id}')">
       <div class="body">
         <div class="title">${esc(e.name)}</div>
-        <div class="meta">${h.length ? `${h.length}× · PR <span class="pr">${fmtW(prWeight(e.id))} kg</span> · naposledy ${last.sets.map((s) => s.r + "×" + fmtW(s.w)).join(", ")}` : `${esc(e.part)} · zatím žádná data`}</div>
+        <div class="meta">${h.length
+          ? `${h.length}× · PR <span class="pr">${fmtW(prWeight(e.id))} kg</span> · naposledy ${last.sets.map((s) => s.r + "×" + fmtW(s.w)).join(", ")}`
+          : `${esc(e.part)} · start ${fmtW(p.w)} kg`}</div>
       </div><div class="go">${I.chevronR()}</div></div>`;
   }).join("");
   const tot = history.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
@@ -1027,36 +1434,37 @@ function viewDash() {
     </div>
     <h2>${I.bulb()}Doporučení</h2>
     ${rc.length ? rc.map((r) => `<div class="card" onclick="openEx('${r.ex.id}')">
-        <div class="dot ${r.p === 0 ? "up" : r.p === 1 ? "down" : "hold"}"></div>
+        <div class="dot ${r.p.state === "up" ? "up" : r.p.state === "down" ? "down" : "hold"}"></div>
         <div class="body">
           <div class="title" style="font-size:14px">${esc(r.ex.name)}</div>
-          <div class="meta">${esc(r.txt)}</div>
+          <div class="meta">${esc(r.p.why)} · ${fmtW(r.p.w)} kg</div>
         </div><div class="go">${I.chevronR()}</div></div>`).join("")
       : `<div class="muted">Odcvič pár tréninků a začnu ti radit, kdy přidat a kdy podržet váhu.</div>`}
     <h2>${I.dumbbell()}Cviky</h2>
     ${cards}
-    <h2>${I.gear()}Nastavení a data</h2>
-    <div class="btn-row">
-      <button class="btn btn-ghost" onclick="dashView='settings';render()">${I.gear()}Kroky vah</button>
-      <button class="btn btn-ghost" onclick="exportData()">Export</button>
-      <button class="btn btn-ghost" onclick="importPrompt()">Import</button>
-    </div>
-    <div id="ioArea"></div>
+    <h2>${I.gear()}Nastavení</h2>
+    <div class="card" onclick="dashView='settings';render()">
+      <div class="body"><div class="title">Nastavení a data</div>
+      <div class="meta">cloud sync <span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span> · kroky vah · záloha</div></div>
+      <div class="go">${I.chevronR()}</div></div>
   </div>`;
 }
 function openEx(id) { dashEx = id; render(); }
 function viewExDetail(id) {
   const ex = allEx().find((e) => e.id === id);
   const h = exHistory(id);
+  const p = ex ? progression(ex, ex.sets.length - 1) : null;
   const rows = [...h].reverse().map((e) => `<tr><td>${fmtDate(e.date)}</td>
     <td>${e.sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ")}</td><td>${e.rpe ?? "–"}</td></tr>`).join("");
   return `<div class="screen">
     <div class="topbar"><button class="back" onclick="dashEx=null;render()">${I.chevronL()}</button></div>
     <div class="ex-head">
-      <div class="ex-sub">${esc(ex ? ex.sub : "")}</div>
       <div class="ex-name">${esc(ex ? ex.name : id)}</div>
       <div class="ex-target">PR <span class="pr">${fmtW(prWeight(id))} kg</span> · ${h.length} ${plural(h.length, "záznam", "záznamy", "záznamů")}</div>
     </div>
+    ${p ? `<div class="stats one"><div class="stat ${p.state}">
+      <div class="k">Příště</div><div class="v">${p.r} op.</div><div class="v">${fmtW(p.w)} kg</div></div></div>
+      <div class="center muted">${esc(p.why)}</div>` : ""}
     <h2>${I.chart()}Progres váhy (top set)</h2>
     <canvas class="chart" id="chartW" width="440" height="170"></canvas>
     <h2>${I.history()}Historie</h2>
@@ -1065,33 +1473,70 @@ function viewExDetail(id) {
   </div>`;
 }
 
-// ---------- nastavení kroků vah ----------
+// ---------- nastavení ----------
 const STEPS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
 function viewSettings() {
   const rows = allEx().map((e) => `<div class="panel">
     <div class="title">${esc(e.name)}</div>
     <div class="meta">${esc(e.part)} · pauza ${e.rest} s</div>
-    <div class="setrow">
-      ${STEPS.map((s) => `<button class="stepchip ${e.step === s ? "on" : ""}" onclick="setStep('${e.id}',${s})">${fmtW(s)}</button>`).join("")}
-    </div>
-    <div class="setrow">
-      <button class="stepchip" onclick="setRest('${e.id}',-15)">−15 s</button>
-      <button class="stepchip" onclick="setRest('${e.id}',15)">+15 s</button>
+    <div class="setrow">${STEPS.map((s) => `<button class="stepchip ${e.step === s ? "on" : ""}" onclick="setStep('${e.id}',${s})">${fmtW(s)}</button>`).join("")}</div>
+    <div class="setrow pair">
+      <button class="stepchip" onclick="setRest('${e.id}',-15)">−15 s pauza</button>
+      <button class="stepchip" onclick="setRest('${e.id}',15)">+15 s pauza</button>
     </div>
   </div>`).join("");
+
+  const sync = Sync.enabled()
+    ? `<div class="panel">
+        <div class="title"><span id="syncDot" class="sync-dot ${Sync.status}"></span>Cloud sync zapnutý</div>
+        <div class="meta">poslední: <span id="syncState" class="sync-state ${Sync.status}">${Sync.label()}</span></div>
+        <div class="meta code" onclick="copySync()">${esc(Sync.id)}</div>
+        <div class="meta">Tenhle kód zadej na mobilu a máš tam stejná data.</div>
+        <div class="btn-row">
+          <button class="btn btn-2" onclick="Sync.pull()">${I.cloud()}Stáhnout</button>
+          <button class="btn btn-2" onclick="Sync.push()">${I.arrowUp()}Nahrát</button>
+        </div>
+        <div class="btn-row"><button class="btn btn-3" onclick="Sync.disconnect()">Odpojit</button></div>
+      </div>`
+    : `<div class="panel">
+        <div class="title">Cloud sync</div>
+        <div class="meta">Zapni a dostaneš kód. Zadáš ho na dalším zařízení a historie se drží pohromadě.</div>
+        <div class="btn-row"><button class="btn btn-primary" style="font-size:14px;padding:14px" onclick="syncStart()">${I.cloud()}Zapnout sync</button></div>
+        <div class="btn-row"><button class="btn btn-3" onclick="syncJoin()">Mám kód z jiného zařízení</button></div>
+      </div>`;
+
   return `<div class="screen">
     <div class="topbar"><button class="back" onclick="dashView='list';render()">${I.chevronL()}</button></div>
-    <h1 class="brand">Kroky vah</h1>
-    <div class="sub">o kolik kg skáčou tlačítka ± u každého cviku</div>
+    <h1 class="brand">Nastavení</h1>
+    <div class="sub">sync, kroky vah, záloha</div>
+    <h2>${I.cloud()}Cloud sync</h2>
+    ${sync}
+    <h2>${I.gear()}Kroky vah</h2>
+    <div class="muted" style="margin-bottom:10px">O kolik kg skáčou tlačítka ± u každého cviku.</div>
     ${rows}
-    <div class="btn-row"><button class="btn btn-ghost" onclick="resetOverrides()">Vrátit původní hodnoty</button></div>
+    <h2>${I.history()}Záloha</h2>
+    <div class="btn-row">
+      <button class="btn btn-2" onclick="exportData()">Export JSON</button>
+      <button class="btn btn-2" onclick="importPrompt()">Import</button>
+    </div>
+    <div id="ioArea"></div>
+    <div class="btn-row"><button class="btn btn-3" onclick="resetOverrides()">Vrátit kroky vah na původní</button></div>
   </div>`;
 }
+async function syncStart() { const id = await Sync.create(); if (id) { alert("Sync zapnutý.\n\nKód:\n" + id + "\n\nZadej ho na mobilu."); render(); } else alert("Nepovedlo se: " + Sync.msg); }
+async function syncJoin() {
+  const id = prompt("Vlož sync kód z druhého zařízení:");
+  if (!id) return;
+  const ok = await Sync.connect(id);
+  alert(ok ? "Napojeno, data stažena." : "Nepovedlo se: " + Sync.msg);
+  render();
+}
+function copySync() { navigator.clipboard?.writeText(Sync.id); alert("Kód zkopírován."); }
 function setStep(id, v) { overrides[id] = { ...(overrides[id] || {}), step: v }; DB.set("overrides", overrides); applyOverrides(); render(); }
 function setRest(id, d) {
   const ex = allEx().find((e) => e.id === id);
   const v = Math.max(30, (ex.rest || 120) + d);
-  overrides[id] = { ...(overrides[id] || {}), rest: v, restPrep: Math.max(30, Math.round(v * 0.7 / 15) * 15) };
+  overrides[id] = { ...(overrides[id] || {}), rest: v, restPrep: Math.max(30, Math.round(v * 0.7 / 5) * 5) };
   DB.set("overrides", overrides); applyOverrides(); render();
 }
 function resetOverrides() {
@@ -1117,24 +1562,22 @@ function drawChart(id, pts) {
     x.beginPath(); x.moveTo(pad, yy); x.lineTo(W - pad, yy); x.stroke();
     x.fillText(fmtW(Math.round(v * 10) / 10) + " kg", 2, yy + 3);
   }
-  const grad = x.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0, "#8b7cff"); grad.addColorStop(1, "#4c8dff");
-  // jemná plocha pod křivkou
   const fill = x.createLinearGradient(0, 0, 0, H);
   fill.addColorStop(0, "rgba(76,141,255,.22)"); fill.addColorStop(1, "rgba(76,141,255,0)");
   x.beginPath();
   pts.forEach((p, i) => (i ? x.lineTo(X(i), Y(p.v)) : x.moveTo(X(i), Y(p.v))));
   x.lineTo(X(pts.length - 1), H - pad); x.lineTo(X(0), H - pad); x.closePath();
   x.fillStyle = fill; x.fill();
+  const grad = x.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, "#8b7cff"); grad.addColorStop(1, "#4c8dff");
   x.strokeStyle = grad; x.lineWidth = 2.5; x.lineJoin = "round"; x.beginPath();
   pts.forEach((p, i) => (i ? x.lineTo(X(i), Y(p.v)) : x.moveTo(X(i), Y(p.v))));
   x.stroke();
-  // zvýrazněný poslední bod
   pts.forEach((p, i) => {
-    const lastOne = i === pts.length - 1;
-    x.beginPath(); x.arc(X(i), Y(p.v), lastOne ? 4.5 : 3, 0, 7);
-    x.fillStyle = lastOne ? "#4c8dff" : "rgba(255,255,255,.35)"; x.fill();
-    if (lastOne) { x.strokeStyle = "#000"; x.lineWidth = 2; x.stroke(); }
+    const isLast = i === pts.length - 1;
+    x.beginPath(); x.arc(X(i), Y(p.v), isLast ? 4.5 : 3, 0, 7);
+    x.fillStyle = isLast ? "#4c8dff" : "rgba(255,255,255,.35)"; x.fill();
+    if (isLast) { x.strokeStyle = "#000"; x.lineWidth = 2; x.stroke(); }
   });
 }
 
@@ -1144,7 +1587,7 @@ function exportData() {
 }
 function importPrompt() {
   $("#ioArea").innerHTML = `<div class="spacer"></div><textarea class="io" id="importBox" placeholder="Vlož JSON zálohy"></textarea>
-    <button class="btn btn-ghost" style="margin-top:8px" onclick="doImport()">Naimportovat</button>`;
+    <button class="btn btn-2" style="margin-top:8px" onclick="doImport()">Naimportovat</button>`;
 }
 function doImport() {
   try {
@@ -1164,6 +1607,7 @@ window.addEventListener("load", () => {
   SpotifyUI.init();
   if (session) keepAwake(true);
   render();
+  if (Sync.enabled()) Sync.pull(true);
 });
 
 </script>
