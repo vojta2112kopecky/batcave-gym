@@ -903,7 +903,31 @@ function boxNext() {
   }
   box._b = {}; DB.set("box", box); bell(box.phase === "work" ? 2 : 1); render();
 }
-// jedno cinknutí ringového zvonu – kovové, s dozvukem
+// ---------- ringový gong ----------
+// Přehrává se skutečná nahrávka; syntéza níž je záloha, kdyby se nenačetla.
+let bellBuf = null, bellPool = [];
+function bellInit() {
+  if (bellPool.length) return;
+  for (let i = 0; i < 3; i++) {
+    const a = new Audio(typeof BELL_MP3 !== "undefined" ? BELL_MP3 : "");
+    a.preload = "auto"; a.volume = 1;   // hlasitost je zapečená v souboru (−10 dBFS)
+    bellPool.push(a);
+  }
+}
+let bellIdx = 0;
+function bellPlay() {
+  if (typeof BELL_MP3 === "undefined") return false;
+  try {
+    bellInit();
+    const a = bellPool[bellIdx++ % bellPool.length];
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+    return true;
+  } catch { return false; }
+}
+
+// jedno cinknutí ringového zvonu – kovové, s dozvukem (záloha)
 function ding(at, vol) {
   const base = 640;
   // nesouzvučné složky dělají ten kovový zvuk zvonu
@@ -927,8 +951,9 @@ function ding(at, vol) {
   n.connect(hp).connect(ng).connect(actx.destination);
   n.start(at);
 }
-// boxerský gong: tři údery za sebou, ztlumené
+// boxerský gong
 function bell(strikes = 3) {
+  if (bellPlay()) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
