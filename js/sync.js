@@ -7,14 +7,31 @@
 // ============================================================
 "use strict";
 
+// Trvalé úložiště – stejné na všech zařízeních, nic se nezadává.
+// Pozor: tenhle identifikátor je v public repu, takže kdo ho najde, na data vidí.
+// Jsou tam jen čísla z tréninku – žádné jméno, mail ani přihlašovací údaje.
+const SYNC_DEFAULT_ID = "019fd62f-7ae2-7874-ad4b-73722abb7bf7";
+
 const Sync = {
   API: "https://jsonblob.com/api/jsonBlob",
-  get id() { return localStorage.getItem("sync_id") || null; },
+  get id() { return localStorage.getItem("sync_id") || SYNC_DEFAULT_ID; },
   set id(v) { v ? localStorage.setItem("sync_id", v) : localStorage.removeItem("sync_id"); },
   get last() { return localStorage.getItem("sync_last") || null; },
   status: "off", // off | ok | busy | err
   msg: "",
-  enabled() { return !!this.id; },
+  enabled() { return true; },   // vždycky zapnutý
+
+  // lokální záloha pro případ, že by se cloud rozsypal
+  backup() {
+    try {
+      if (!history.length) return;
+      const b = JSON.parse(localStorage.getItem("backups") || "[]");
+      const snap = { at: new Date().toISOString(), n: history.length, history, targets };
+      if (b.length && b[b.length - 1].n === snap.n) b[b.length - 1] = snap;
+      else b.push(snap);
+      localStorage.setItem("backups", JSON.stringify(b.slice(-6)));
+    } catch {}
+  },
 
   url() { return `${this.API}/${this.id}`; },
 
@@ -92,6 +109,7 @@ const Sync = {
     this._lastPush = Date.now();
     this.status = "busy"; paintSync();
     const body = this.payload();
+    this.backup();
     try {
       const r = await fetch(this.url(), {
         method: "PUT", keepalive: true,

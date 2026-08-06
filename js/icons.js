@@ -33,6 +33,17 @@ const I = {
   layers: () => ICO('<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/>'),
   cloud: () => ICO('<path d="M17.5 19a4.5 4.5 0 00.5-8.97A6 6 0 006.1 10.5 3.75 3.75 0 006.5 19z"/>'),
   grip: () => ICO('<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/>'),
+  trendUp: () => ICO('<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>'),
+  trendFlat: () => ICO('<path d="M3 12h18M17 8l4 4-4 4"/>'),
+  glove: () => ICO('<path d="M7 8a4 4 0 018 0v3M15 11h1.5A2.5 2.5 0 0119 13.5V16a5 5 0 01-5 5h-3a4 4 0 01-4-4V9M7 12h8"/>'),
+  bell: () => ICO('<path d="M18 8a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7M13.7 21a2 2 0 01-3.4 0"/>'),
+  // netopýr – silueta v roztažených křídlech
+  // netopýří znak – pravá polovina, levá je její zrcadlo
+  bat: (cls = "") => {
+    const half = "M120 10 L134 14 L138 2 L143 17 L153 27 Q160 20 168 24 Q176 28 184 22 Q192 16 200 20 L232 34 L206 44 Q196 62 186 50 Q176 66 166 54 Q150 70 138 60 L120 86 Z";
+    return `<svg class="ico ${cls}" viewBox="0 0 240 90" fill="currentColor" aria-hidden="true">
+      <path d="${half}"/><path d="${half}" transform="translate(240,0) scale(-1,1)"/></svg>`;
+  },
   chevronD: () => ICO('<path d="M5 9l7 7 7-7"/>'),
   chevronU: () => ICO('<path d="M5 15l7-7 7 7"/>'),
   // Spotify – oficiální tvar (kruh se třemi vlnami)

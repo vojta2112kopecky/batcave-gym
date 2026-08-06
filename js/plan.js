@@ -10,7 +10,7 @@
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 8,
+  version: 9,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
   // pauzy: po přípravné sérii i mezi přípravnou a pracovní 1:30,
   // mezi pracovními sériemi 1:45, mezi cviky 2:00
@@ -19,18 +19,10 @@ const DEFAULT_PLAN = {
   restBetweenExercises: 120,
   // kolik tréninků po sobě musíš dát horní hranici, než appka přidá kilo
   progressAfter: 2,
-  // běžný týden – 1 = pondělí … 7 = neděle
+  // běžný týden – 1 = pondělí … 7 = neděle; středa, sobota a neděle volno
   schedule: { 1: "A", 2: "B", 4: "C", 5: "D" },
-  // konkrétní dny přebíjejí běžný rozvrh (null = volno)
-  overrides: {
-    "2026-08-03": null,
-    "2026-08-04": null,
-    "2026-08-05": "A",
-    "2026-08-06": "B",
-    "2026-08-07": "C",
-    "2026-08-08": "D",
-    "2026-08-09": null,
-  },
+  // konkrétní dny přebíjejí běžný rozvrh (null = volno) – mění se v appce
+  overrides: {},
   workouts: [
     {
       id: "A", name: "TRÉNINK A", focus: "Prsa · Ramena · Triceps",

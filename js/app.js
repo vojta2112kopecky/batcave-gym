@@ -418,6 +418,18 @@ function endExercise() {
 
 // ---------- globální hodiny ----------
 setInterval(() => {
+  // boxerský timer
+  if (box && (box.phase === "work" || box.phase === "rest")) {
+    const left = Math.max(0, (box.endAt - (box.paused ? box.pausedAt : Date.now())) / 1000);
+    const el = $("#boxTimer"), bar = $("#boxBar");
+    if (el) el.textContent = fmtTime(Math.ceil(left));
+    if (bar) bar.style.transform = `scaleX(${left / (box.phase === "work" ? box.work : box.rest)})`;
+    if (!box.paused) {
+      box._b = box._b || {};
+      if (left <= 10 && !box._b.ten) { box._b.ten = 1; beep(880, 0.1, 0.05); }
+      if (left <= 0) boxNext();
+    }
+  }
   if (!session) return;
   if (session.phase === "work") {
     const el = $("#workTimer");
@@ -444,7 +456,8 @@ setInterval(() => {
 // ---------- render ----------
 function render() {
   let html;
-  if (tab === "dash") html = dashView === "settings" ? viewSettings() : dashEx ? viewExDetail(dashEx) : viewDash();
+  if (box) html = viewBox();
+  else if (tab === "dash") html = dashView === "settings" ? viewSettings() : dashEx ? viewExDetail(dashEx) : viewDash();
   else if (!session) html = viewHome();
   else if (session.phase === "ready") html = viewReady();
   else if (session.phase === "work") html = viewWork();
@@ -453,12 +466,13 @@ function render() {
   else if (session.phase === "record") html = viewRecord();
   else if (session.phase === "rpe") html = viewRpe();
   else html = viewSummary();
-  // během tréninku spodní navigace mizí, dole jsou akční tlačítka
-  const inWorkout = session && tab === "workout" && session.phase !== "summary";
+  // během tréninku a boxu spodní navigace mizí, dole jsou akční tlačítka
+  const inWorkout = !!box || (session && tab === "workout" && session.phase !== "summary");
   $("#app").className = inWorkout ? "in-workout" : "";
   $("#app").innerHTML = html + (inWorkout ? "" : viewNav())
     + (session && session.ask ? viewAsk() : "")
-    + (session && session.orderOpen ? viewOrder() : "");
+    + (session && session.orderOpen ? viewOrder() : "")
+    + (weekOpen ? viewWeekEdit() : "") + (planOpen ? viewPlan4() : "");
   if (session && session.orderOpen) initOrderDrag();
   if (tab === "dash" && dashEx && dashView !== "settings") drawExCharts(dashEx);
   if (typeof paintSync === "function") paintSync();
@@ -516,25 +530,109 @@ function viewHome() {
       <div class="hfocus">${nextD ? `další: ${esc(wo(nextD.workoutId).name)} · ${nextD.dow}` : "tento týden máš hotovo"}</div></div>`;
   }
 
-  const cards = plan.workouts.map((w) => {
-    const last = [...history].reverse().find((h) => h.workoutId === w.id);
-    return `<div class="card" onclick="startWorkout('${w.id}')">
-      <div class="body">
-        <div class="title">${esc(w.name)}</div>
-        <div class="meta">${esc(w.focus)} · ${w.exercises.length} cviků${last ? ` · naposledy ${fmtDate(last.date)}` : ""}</div>
-      </div><div class="go">${I.chevronR()}</div></div>`;
-  }).join("");
-
   return `<div class="screen">
-    <h1 class="brand">Batcave <em>Gym</em></h1>
-    <div class="sub">${esc(plan.source)}</div>
-    <h2>${I.calendar()}Tento týden</h2>
+    <div class="logo-row">${I.bat("bat-mark")}<h1 class="brand">Batcave <em>Gym</em></h1></div>
+    <h2>${I.calendar()}Tento týden
+      <button class="h2-act" onclick="openWeek()">upravit</button>
+      <button class="h2-act" onclick="openPlan()">4 týdny</button>
+    </h2>
     <div class="week">${cal}</div>
     <div class="spacer"></div>
     ${hero}
     ${SpotifyUI.bar()}
-    <h2>${I.dumbbell()}Všechny tréninky</h2>
-    ${cards}
+    ${last7()}
+  </div>`;
+}
+
+// ---------- statistiky za 7 dní ----------
+function last7() {
+  const days = [];
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(base); d.setDate(base.getDate() - i);
+    const key = iso(d);
+    const hs = history.filter((h) => h.date === key);
+    const ton = hs.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
+    const sets = hs.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.length, 0), 0);
+    days.push({ key, dow: DOW[(d.getDay() + 6) % 7], ton, sets, n: hs.length });
+  }
+  const max = Math.max(1, ...days.map((d) => d.ton));
+  const totT = days.reduce((a, d) => a + d.ton, 0);
+  const totS = days.reduce((a, d) => a + d.sets, 0);
+  const n = days.filter((d) => d.n).length;
+  const rpes = history.filter((h) => days.some((d) => d.key === h.date)).flatMap((h) => h.exercises.map((e) => e.rpe)).filter((x) => x != null);
+  const avgRpe = rpes.length ? (rpes.reduce((a, b) => a + b, 0) / rpes.length).toFixed(1).replace(".", ",") : "–";
+  const bars = days.map((d) => `<div class="b7">
+      <i style="height:${d.ton ? Math.max(8, (d.ton / max) * 100) : 3}%" class="${d.ton ? "on" : ""}"></i>
+      <span>${d.dow}</span></div>`).join("");
+  return `<h2>${I.chart()}Posledních 7 dní</h2>
+    <div class="s7">
+      <div class="s7-nums">
+        <div><b>${n}</b><span>${plural(n, "trénink", "tréninky", "tréninků")}</span></div>
+        <div><b>${totS}</b><span>sérií</span></div>
+        <div><b>${Math.round(totT / 1000).toLocaleString("cs-CZ")}t</b><span>objem</span></div>
+        <div><b>${avgRpe}</b><span>RPE</span></div>
+      </div>
+      <div class="s7-bars">${bars}</div>
+    </div>`;
+}
+
+// ---------- plán na 4 týdny + úprava týdne ----------
+let weekOpen = false, planOpen = false;
+function openWeek() { weekOpen = true; render(); }
+function closeWeek() { weekOpen = false; render(); }
+function openPlan() { planOpen = true; render(); }
+function closePlan() { planOpen = false; render(); }
+
+function dayPlan(d) {
+  const key = iso(d), ov = plan.overrides || {};
+  return key in ov ? ov[key] : plan.schedule[((d.getDay() + 6) % 7) + 1] || null;
+}
+function setDay(key, wid) {
+  plan.overrides = plan.overrides || {};
+  plan.overrides[key] = wid || null;
+  DB.set("plan", plan); render();
+}
+function viewWeekEdit() {
+  const rows = weekDays().map((d) => `<div class="dayrow ${d.isToday ? "today" : ""}">
+      <span class="dl">${d.dow} ${d.num}.</span>
+      <div class="dpick">
+        ${plan.workouts.map((w) => `<button class="${d.workoutId === w.id ? "on" : ""}" onclick="setDay('${d.key}','${w.id}')">${w.id}</button>`).join("")}
+        <button class="rest ${!d.workoutId ? "on" : ""}" onclick="setDay('${d.key}','')">–</button>
+      </div>
+    </div>`).join("");
+  return `<div class="modal-wrap" onclick="closeWeek()">
+    <div class="modal wide" onclick="event.stopPropagation()">
+      <div class="m-title">Tento týden</div>
+      <div class="m-sub">Klepni na písmeno tréninku nebo na – pro volno.</div>
+      <div class="daylist">${rows}</div>
+      <div class="m-row"><button class="btn btn-primary" onclick="closeWeek()">Hotovo</button></div>
+    </div>
+  </div>`;
+}
+function viewPlan4() {
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  const mon = new Date(base); mon.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+  const weeks = [];
+  for (let w = 0; w < 4; w++) {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(mon); d.setDate(mon.getDate() + w * 7 + i);
+      return { d, key: iso(d), wid: dayPlan(d), isToday: iso(d) === today(), done: history.some((h) => h.date === iso(d)) };
+    });
+    weeks.push({ from: days[0].d, days });
+  }
+  return `<div class="modal-wrap" onclick="closePlan()">
+    <div class="modal wide" onclick="event.stopPropagation()">
+      <div class="m-title">Plán na 4 týdny</div>
+      <div class="p4">
+        ${weeks.map((wk) => `<div class="p4w">
+          <div class="p4h">${wk.from.getDate()}. ${wk.from.getMonth() + 1}.</div>
+          <div class="p4d">${wk.days.map((x) => `<i class="${x.wid ? "has" : ""} ${x.isToday ? "today" : ""} ${x.done ? "done" : ""}">${x.wid || "–"}</i>`).join("")}</div>
+        </div>`).join("")}
+      </div>
+      <div class="m-sub">${DOW.join(" · ")}</div>
+      <div class="m-row"><button class="btn btn-primary" onclick="closePlan()">Zavřít</button></div>
+    </div>
   </div>`;
 }
 
@@ -710,16 +808,10 @@ function viewRest() {
   ${dock(`<button class="btn btn-primary" onclick="endRest()">${I.bolt()}Jdu na set</button>`)}`;
 }
 function viewRpe() {
-  const ex = curEx(), sets = session.entries[ex.id].sets.map((s) => `${s.r}×${fmtW(s.w)}`).join(" · ");
   return `<div class="screen wk">
     <div class="topbar"><button class="back" onclick="askAbort()" aria-label="Ukončit trénink">${I.close()}</button></div>
-    <div class="ex-head">
-      <div class="ex-name">${esc(ex.name)}</div>
-      <div class="ex-set" style="margin-top:8px">Hotovo · ${sets}</div>
-      <div class="ex-target">Jak náročné to bylo? RPE 1–10</div>
-    </div>
+    <div class="rpe-q">Jak náročné to bylo?</div>
     <div class="rpe-grid">${[1,2,3,4,5,6,8,9,10].map((v) => `<button class="rpe-btn" onclick="saveRpe(${v})">${v}</button>`).join("")}</div>
-    <div class="center muted">1 = pohoda · 10 = absolutní selhání</div>
   </div>
   ${dock("", `<button class="btn btn-3" onclick="addSet()">${I.plus()}Ještě jeden set</button>`)}`;
 }
@@ -743,6 +835,110 @@ function viewSummary() {
     ${prs.map((e) => `<div class="pr-line">${I.arrowUp()}${esc(e.name)} – ${fmtW(topW(e.sets))} kg</div>`).join("")}
     <div class="spacer"></div>
     <button class="btn btn-primary" onclick="closeSummary()">${I.check()}Zavřít</button>
+    <div class="btn-row"><button class="btn btn-2" onclick="openBox()">${I.glove()}Chci ještě box</button></div>
+  </div>`;
+}
+
+// ============================================================
+// BOXING TIMER – kolo zeleně, pauza červeně, gong na začátku i konci
+// ============================================================
+let box = DB.get("box", null);
+const boxCfg = () => DB.get("boxCfg", { rounds: 3, work: 120, rest: 60 });
+
+function openBox() {
+  const c = boxCfg();
+  box = { ...c, phase: "setup", round: 1, endAt: 0, paused: false, pausedAt: 0 };
+  DB.set("box", box); render();
+}
+function closeBox() { box = null; DB.set("box", null); render(); }
+function boxSet(k, d) {
+  const lim = k === "rounds" ? [1, 20] : [10, 120];
+  const step = k === "rounds" ? 1 : 10;
+  box[k] = Math.min(lim[1], Math.max(lim[0], box[k] + d * step));
+  DB.set("boxCfg", { rounds: box.rounds, work: box.work, rest: box.rest });
+  DB.set("box", box); render();
+}
+function boxStart() {
+  box.phase = "work"; box.round = 1; box.endAt = Date.now() + box.work * 1000;
+  box._b = {}; DB.set("box", box); bell(); render();
+}
+function boxTogglePause() {
+  if (box.paused) { box.endAt += Date.now() - box.pausedAt; box.paused = false; }
+  else { box.paused = true; box.pausedAt = Date.now(); }
+  DB.set("box", box);
+  const b = $("#boxPause"); if (b) b.innerHTML = box.paused ? I.play() : I.pause();
+  const s = $(".box-screen"); if (s) s.classList.toggle("paused", box.paused);
+}
+function boxNext() {
+  if (box.phase === "work") {
+    if (box.round >= box.rounds) { box.phase = "done"; DB.set("box", box); bell(); setTimeout(bell, 700); return render(); }
+    box.phase = "rest"; box.endAt = Date.now() + box.rest * 1000;
+  } else {
+    box.round++; box.phase = "work"; box.endAt = Date.now() + box.work * 1000;
+  }
+  box._b = {}; DB.set("box", box); bell(); render();
+}
+// boxerský gong, ztlumený
+function bell() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    const t = actx.currentTime;
+    [784, 1174, 1568].forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = i === 0 ? "triangle" : "sine";
+      o.frequency.setValueAtTime(f, t);
+      const peak = 0.3 / (i + 1.4);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peak, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+      o.connect(g).connect(actx.destination);
+      o.start(t); o.stop(t + 1.7);
+    });
+  } catch {}
+}
+function viewBox() {
+  if (box.phase === "setup") {
+    const row = (k, label, val) => `<div class="brow">
+      <span>${label}</span>
+      <div class="bctl">
+        <button onclick="boxSet('${k}',-1)">${I.minus()}</button>
+        <b>${val}</b>
+        <button onclick="boxSet('${k}',1)">${I.plus()}</button>
+      </div></div>`;
+    return `<div class="screen box-setup">
+      <div class="topbar"><button class="back" onclick="closeBox()">${I.close()}</button></div>
+      <div class="summary-ico">${I.glove()}</div>
+      <h1 class="brand">Box</h1>
+      <div class="sub">nastav si kola</div>
+      ${row("rounds", "Počet kol", box.rounds)}
+      ${row("work", "Délka kola", fmtTime(box.work))}
+      ${row("rest", "Pauza", fmtTime(box.rest))}
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="boxStart()">${I.bolt()}Start</button>
+    </div>`;
+  }
+  if (box.phase === "done") {
+    return `<div class="screen box-done">
+      <div class="summary-ico" style="color:var(--ok)">${I.trophy()}</div>
+      <h1 class="brand">Gratuluju!</h1>
+      <div class="sub">${box.rounds} ${plural(box.rounds, "kolo", "kola", "kol")} · ${fmtTime(box.rounds * box.work)} v ringu</div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="closeBox()">${I.check()}Hotovo</button>
+      <div class="btn-row"><button class="btn btn-3" onclick="openBox()">${I.glove()}Ještě jednou</button></div>
+    </div>`;
+  }
+  const work = box.phase === "work";
+  return `<div class="screen box-screen ${work ? "go" : "pause"} ${box.paused ? "paused" : ""}">
+    <div class="topbar"><button class="back" onclick="closeBox()">${I.close()}</button></div>
+    <div class="box-round">Kolo ${box.round} / ${box.rounds}</div>
+    <div class="box-state">${work ? "Do toho" : "Pauza"}</div>
+    <div class="box-timer" id="boxTimer">--:--</div>
+    <div class="rest-bar"><i id="boxBar"></i></div>
+    <div class="rest-ctrl">
+      <button class="pause-btn" id="boxPause" onclick="boxTogglePause()">${box.paused ? I.play() : I.pause()}</button>
+    </div>
+    <button class="btn btn-2" onclick="boxNext()">${I.skip()}Přeskočit</button>
   </div>`;
 }
 
@@ -785,6 +981,22 @@ const GROUPS = {
 const groupOf = (ex) => Object.keys(GROUPS).find((k) => GROUPS[k].parts.includes(ex.part)) || "push";
 const exInGroup = (g) => allEx().filter((e) => groupOf(e) === g);
 
+// roste síla partie, nebo stojí?
+function exTrend(ex) {
+  const h = exHistory(ex.id);
+  if (h.length < 2) return h.length ? "flat" : "none";
+  const last = topW(h[h.length - 1].sets), prev = topW(h[h.length - 2].sets);
+  return last > prev ? "up" : last < prev ? "down" : "flat";
+}
+function groupTrend(g) {
+  const exs = exInGroup(g), t = exs.map(exTrend);
+  const up = t.filter((x) => x === "up").length;
+  const active = t.filter((x) => x !== "none").length;
+  if (!active) return { state: "none", label: "zatím nic" };
+  if (up) return { state: "up", label: `${up} ${plural(up, "cvik roste", "cviky rostou", "cviků roste")}` };
+  return { state: "flat", label: "drží se" };
+}
+
 function viewDash() {
   const ws = weekStats(), rc = recos();
   const cards = (dashGroup ? exInGroup(dashGroup) : allEx()).map((e) => {
@@ -799,11 +1011,11 @@ function viewDash() {
       </div><div class="go">${I.chevronR()}</div></div>`;
   }).join("");
   const groupTiles = Object.entries(GROUPS).map(([k, g]) => {
-    const exs = exInGroup(k);
-    const n = exs.reduce((a, e) => a + exHistory(e.id).length, 0);
-    const pr = Math.max(0, ...exs.map((e) => prWeight(e.id)));
-    return `<button class="gtile ${dashGroup === k ? "on" : ""}" onclick="setGroup('${dashGroup === k ? "" : k}')">
-      <b>${g.name}</b><span>${exs.length} cviků</span><i>${n ? `${n} záznamů · PR ${fmtW(pr)} kg` : "zatím nic"}</i></button>`;
+    const t = groupTrend(k);
+    return `<button class="gtile ${dashGroup === k ? "on" : ""} t-${t.state}" onclick="setGroup('${dashGroup === k ? "" : k}')">
+      <span class="tico">${t.state === "up" ? I.trendUp() : t.state === "flat" ? I.trendFlat() : I.dot()}</span>
+      <b>${g.name}</b>
+      <i>${t.label}</i></button>`;
   }).join("");
   const tot = history.reduce((a, h) => a + h.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + s.w * s.r, 0), 0), 0);
   return `<div class="screen">
@@ -1042,6 +1254,16 @@ function doImport() {
   } catch (e) { alert("Nevalidní JSON: " + e.message); }
 }
 
+// intro: netopýr se přiblíží, až se v něm otevře appka – jen na úvodní obrazovce
+function playIntro() {
+  const el = document.getElementById("intro");
+  if (!el || session || box) return;
+  el.innerHTML = `<div class="intro-bat">${I.bat()}</div>`;
+  el.hidden = false;
+  el.classList.add("run");
+  setTimeout(() => { el.hidden = true; el.classList.remove("run"); el.innerHTML = ""; }, 1500);
+}
+
 // ---------- init ----------
 window.addEventListener("load", () => {
   const unlock = () => beep(1, 0.01, 0.001);
@@ -1050,6 +1272,7 @@ window.addEventListener("load", () => {
   SpotifyUI.init();
   if (session) keepAwake(true);
   render();
+  playIntro();
   // sync kód v odkazu napojí zařízení sám; jinak dotáhni, co je v cloudu
   Sync.fromLink().then((joined) => {
     if (joined) return render();
