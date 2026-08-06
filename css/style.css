@@ -632,8 +632,12 @@ table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant
 .b7 { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
 .b7 i {
   width: 100%; border-radius: 5px; background: var(--s3); display: block;
-  transition: height .4s cubic-bezier(.32,.72,0,1);
+  transform-origin: bottom;
+  animation: grow .45s cubic-bezier(.32,.72,0,1) backwards;
+  animation-delay: calc(.04s * var(--i, 0));
 }
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .b7 i { animation: none; } }
 .b7 i.on { background: linear-gradient(180deg, var(--violet), var(--accent)); }
 .b7 span { font-size: 9.5px; color: var(--dim); font-weight: 700; text-transform: uppercase; }
 

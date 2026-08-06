@@ -562,8 +562,8 @@ function last7() {
   const n = days.filter((d) => d.n).length;
   const rpes = history.filter((h) => days.some((d) => d.key === h.date)).flatMap((h) => h.exercises.map((e) => e.rpe)).filter((x) => x != null);
   const avgRpe = rpes.length ? (rpes.reduce((a, b) => a + b, 0) / rpes.length).toFixed(1).replace(".", ",") : "–";
-  const bars = days.map((d) => `<div class="b7">
-      <i style="height:${d.ton ? Math.max(8, (d.ton / max) * 100) : 3}%" class="${d.ton ? "on" : ""}"></i>
+  const bars = days.map((d, i) => `<div class="b7">
+      <i style="height:${d.ton ? Math.max(8, (d.ton / max) * 100) : 3}%;--i:${i}" class="${d.ton ? "on" : ""}"></i>
       <span>${d.dow}</span></div>`).join("");
   return `<h2>${I.chart()}Posledních 7 dní</h2>
     <div class="s7">

@@ -652,8 +652,12 @@ table.log td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant
 .b7 { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
 .b7 i {
   width: 100%; border-radius: 5px; background: var(--s3); display: block;
-  transition: height .4s cubic-bezier(.32,.72,0,1);
+  transform-origin: bottom;
+  animation: grow .45s cubic-bezier(.32,.72,0,1) backwards;
+  animation-delay: calc(.04s * var(--i, 0));
 }
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .b7 i { animation: none; } }
 .b7 i.on { background: linear-gradient(180deg, var(--violet), var(--accent)); }
 .b7 span { font-size: 9.5px; color: var(--dim); font-weight: 700; text-transform: uppercase; }
 
@@ -2103,8 +2107,8 @@ function last7() {
   const n = days.filter((d) => d.n).length;
   const rpes = history.filter((h) => days.some((d) => d.key === h.date)).flatMap((h) => h.exercises.map((e) => e.rpe)).filter((x) => x != null);
   const avgRpe = rpes.length ? (rpes.reduce((a, b) => a + b, 0) / rpes.length).toFixed(1).replace(".", ",") : "–";
-  const bars = days.map((d) => `<div class="b7">
-      <i style="height:${d.ton ? Math.max(8, (d.ton / max) * 100) : 3}%" class="${d.ton ? "on" : ""}"></i>
+  const bars = days.map((d, i) => `<div class="b7">
+      <i style="height:${d.ton ? Math.max(8, (d.ton / max) * 100) : 3}%;--i:${i}" class="${d.ton ? "on" : ""}"></i>
       <span>${d.dow}</span></div>`).join("");
   return `<h2>${I.chart()}Posledních 7 dní</h2>
     <div class="s7">
