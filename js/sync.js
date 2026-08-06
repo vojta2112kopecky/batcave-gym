@@ -38,6 +38,19 @@ const Sync = {
   // odkaz, který kterékoli zařízení napojí sám od sebe
   link() { return location.origin + location.pathname + "#s=" + this.id; },
 
+  // zařízení, které si drží starý vlastní kód, přesuň na společné úložiště
+  async migrate() {
+    const old = localStorage.getItem("sync_id");
+    if (!old || old === SYNC_DEFAULT_ID) return false;
+    try {
+      const r = await fetch(`${this.API}/${old}`, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (r.ok) this.merge(await r.json());
+    } catch {}
+    localStorage.removeItem("sync_id");
+    await this.push(true);
+    return true;
+  },
+
   // sync kód v adrese → napoj se automaticky, nic se nezadává ručně
   async fromLink() {
     const m = (location.hash || "").match(/[#&]s=([0-9a-f-]{20,})/i);

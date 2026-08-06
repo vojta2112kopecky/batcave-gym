@@ -681,27 +681,40 @@ h2 .h2-act:active { color: var(--accent); border-color: var(--accent); }
 .rpe-q { text-align: center; font-size: 17px; font-weight: 800; letter-spacing: -.02em; color: var(--muted); }
 
 /* ---- box ---- */
-.box-setup { text-align: center; }
+.box-setup { text-align: center; animation: none; }
 .brow {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: var(--s1); border: 1px solid var(--line); border-radius: 16px;
-  padding: 12px 14px; margin-bottom: 8px;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px;
+  background: var(--s1); border: 1px solid var(--line); border-radius: 18px;
+  padding: 14px 16px; margin-bottom: 10px;
 }
-.brow > span { font-size: 13.5px; font-weight: 700; color: var(--muted); }
-.bctl { display: flex; align-items: center; gap: 10px; }
+.brow .blab { font-size: 13.5px; font-weight: 700; color: var(--muted); text-align: left; }
+.bctl { display: grid; grid-template-columns: 46px 84px 46px; align-items: center; gap: 10px; }
 .bctl button {
-  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+  width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--line);
   background: var(--s2); color: var(--accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.bctl button svg.ico { width: 17px; height: 17px; }
-.bctl b { min-width: 66px; text-align: center; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bctl button svg.ico { width: 18px; height: 18px; }
+.bctl .bval {
+  width: 100%; background: none; border: none; color: var(--text);
+  text-align: center; font-family: inherit; font-size: 22px; font-weight: 800;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums; padding: 6px 0;
+  border-bottom: 1px solid transparent; border-radius: 0;
+}
+.bctl .bval:focus { outline: none; border-bottom-color: var(--accent); color: var(--accent); }
 
 .box-screen {
   min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; text-align: center;
   padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
   transition: background .4s ease;
+  animation: none;
 }
+/* pevné výšky, ať se při klikání nic neposouvá */
+.box-screen .box-round { min-height: 18px; }
+.box-screen .box-state { min-height: 24px; }
+.box-screen .box-timer { min-height: 96px; display: flex; align-items: center; justify-content: center; }
+.box-screen .rest-ctrl { min-height: 46px; margin: 14px 0 16px; }
+.box-done { animation: none; }
 .box-screen.go { background: radial-gradient(ellipse 100% 55% at 50% 45%, rgba(48,209,88,.16), transparent 70%); }
 .box-screen.pause { background: radial-gradient(ellipse 100% 55% at 50% 45%, rgba(255,69,58,.16), transparent 70%); }
 .box-screen.paused { filter: saturate(.35); }

@@ -701,27 +701,40 @@ h2 .h2-act:active { color: var(--accent); border-color: var(--accent); }
 .rpe-q { text-align: center; font-size: 17px; font-weight: 800; letter-spacing: -.02em; color: var(--muted); }
 
 /* ---- box ---- */
-.box-setup { text-align: center; }
+.box-setup { text-align: center; animation: none; }
 .brow {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: var(--s1); border: 1px solid var(--line); border-radius: 16px;
-  padding: 12px 14px; margin-bottom: 8px;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px;
+  background: var(--s1); border: 1px solid var(--line); border-radius: 18px;
+  padding: 14px 16px; margin-bottom: 10px;
 }
-.brow > span { font-size: 13.5px; font-weight: 700; color: var(--muted); }
-.bctl { display: flex; align-items: center; gap: 10px; }
+.brow .blab { font-size: 13.5px; font-weight: 700; color: var(--muted); text-align: left; }
+.bctl { display: grid; grid-template-columns: 46px 84px 46px; align-items: center; gap: 10px; }
 .bctl button {
-  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+  width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--line);
   background: var(--s2); color: var(--accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.bctl button svg.ico { width: 17px; height: 17px; }
-.bctl b { min-width: 66px; text-align: center; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bctl button svg.ico { width: 18px; height: 18px; }
+.bctl .bval {
+  width: 100%; background: none; border: none; color: var(--text);
+  text-align: center; font-family: inherit; font-size: 22px; font-weight: 800;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums; padding: 6px 0;
+  border-bottom: 1px solid transparent; border-radius: 0;
+}
+.bctl .bval:focus { outline: none; border-bottom-color: var(--accent); color: var(--accent); }
 
 .box-screen {
   min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; text-align: center;
   padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
   transition: background .4s ease;
+  animation: none;
 }
+/* pevné výšky, ať se při klikání nic neposouvá */
+.box-screen .box-round { min-height: 18px; }
+.box-screen .box-state { min-height: 24px; }
+.box-screen .box-timer { min-height: 96px; display: flex; align-items: center; justify-content: center; }
+.box-screen .rest-ctrl { min-height: 46px; margin: 14px 0 16px; }
+.box-done { animation: none; }
 .box-screen.go { background: radial-gradient(ellipse 100% 55% at 50% 45%, rgba(48,209,88,.16), transparent 70%); }
 .box-screen.pause { background: radial-gradient(ellipse 100% 55% at 50% 45%, rgba(255,69,58,.16), transparent 70%); }
 .box-screen.paused { filter: saturate(.35); }
@@ -800,7 +813,8 @@ textarea.io {
   <script>
 // ============================================================
 // TRÉNINKOVÝ PLÁN – staženo z app.trenerpetr.cz
-// Vlastní split · Pokročilý · 4× týdně · třítýdenní rotace
+// Vlastní split · A prsa/ramena/triceps · B záda/biceps · C nohy
+// Rotace po týdnech: A B – A B – –  /  A B – A C – –
 //
 // sets: type prep = rozcvičovací, work = pracovní
 //       from–to = cílový rozsah opakování
@@ -810,7 +824,7 @@ textarea.io {
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 9,
+  version: 10,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
   // pauzy: po přípravné sérii i mezi přípravnou a pracovní 1:30,
   // mezi pracovními sériemi 1:45, mezi cviky 2:00
@@ -819,8 +833,14 @@ const DEFAULT_PLAN = {
   restBetweenExercises: 120,
   // kolik tréninků po sobě musíš dát horní hranici, než appka přidá kilo
   progressAfter: 2,
-  // běžný týden – 1 = pondělí … 7 = neděle; středa, sobota a neděle volno
-  schedule: { 1: "A", 2: "B", 4: "C", 5: "D" },
+  // dvoutýdenní rotace, 1 = pondělí … 7 = neděle
+  //   lichý týden:  A B – A B – –
+  //   sudý týden:   A B – A C – –   (C = nohy)
+  rotation: {
+    a: { 1: "A", 2: "B", 4: "A", 5: "B" },
+    b: { 1: "A", 2: "B", 4: "A", 5: "C" },
+  },
+  schedule: { 1: "A", 2: "B", 4: "A", 5: "B" },
   // konkrétní dny přebíjejí běžný rozvrh (null = volno) – mění se v appce
   overrides: {},
   workouts: [
@@ -989,67 +1009,6 @@ const DEFAULT_PLAN = {
         },
       ],
     },
-    {
-      id: "D", name: "TRÉNINK D", focus: "Prsa · Ramena · Triceps",
-      exercises: [
-        {
-          id: "chest-upper-incline-smith-bench", name: "Tlaky na šikmé lavici v multipressu",
-          sub: "Vrchní část prsou", part: "Prsa", step: 5, rest: 155, restPrep: 95,
-          sets: [
-            { type: "prep", from: 8, to: 10, kg: 25 },
-            { type: "prep", from: 8, to: 10, kg: 30 },
-            { type: "work", from: 4, to: 6, kg: 45 },
-            { type: "work", from: 8, to: 10, kg: 40 },
-          ],
-        },
-        {
-          id: "chest-mid-flat-dumbbell-bench", name: "Tlaky na rovné lavici s jednoručkami",
-          sub: "Středy a spodky prsou", part: "Prsa", step: 2, rest: 125, restPrep: 95,
-          sets: [
-            { type: "prep", from: 8, to: 10, kg: 17 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-            { type: "work", from: 8, to: 10, kg: 22 },
-          ],
-        },
-        {
-          id: "chest-fly-machine", name: "Rozpažování na rovné lavici s jednoručkami",
-          sub: "Prsa", part: "Prsa", step: 2, rest: 95, restPrep: 80,
-          sets: [
-            { type: "work", from: 10, to: 15, kg: 31 },
-            { type: "work", from: 10, to: 15, kg: 31 },
-            { type: "work", from: 10, to: 15, kg: 31 },
-          ],
-        },
-        {
-          id: "shoulders-side-dumbbell-lateral", name: "Upažování s jednoručkami",
-          sub: "Boční delty", part: "Ramena", step: 1, rest: 95, restPrep: 65,
-          sets: [
-            { type: "work", from: 10, to: 15, kg: 7 },
-            { type: "work", from: 10, to: 15, kg: 8 },
-            { type: "work", from: 10, to: 15, kg: 8 },
-          ],
-        },
-        {
-          id: "triceps-lateral-pushdown", name: "Stahování kladky",
-          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, rest: 95, restPrep: 65,
-          sets: [
-            { type: "prep", from: 10, to: 12, kg: 15 },
-            { type: "prep", from: 10, to: 12, kg: 20 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-          ],
-        },
-        {
-          id: "triceps-long-seated-flat-smith-french-press", name: "Francouzské tlaky vstoje v multipressu",
-          sub: "Dlouhá hlava", part: "Triceps", step: 5, rest: 125, restPrep: 80,
-          sets: [
-            { type: "prep", from: 10, to: 12, kg: 15 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-          ],
-        },
-      ],
-    },
   ],
 };
 
@@ -1092,14 +1051,18 @@ const I = {
   grip: () => ICO('<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/>'),
   trendUp: () => ICO('<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>'),
   trendFlat: () => ICO('<path d="M3 12h18M17 8l4 4-4 4"/>'),
-  glove: () => ICO('<path d="M7 8a4 4 0 018 0v3M15 11h1.5A2.5 2.5 0 0119 13.5V16a5 5 0 01-5 5h-3a4 4 0 01-4-4V9M7 12h8"/>'),
+  // boxerská rukavice
+  glove: () => ICO('<path d="M8.5 3h5A3.5 3.5 0 0117 6.5v6a3.5 3.5 0 01-3.5 3.5h-4A3.5 3.5 0 016 12.5v-6A3.5 3.5 0 019.5 3z"/><path d="M6 8.5H5a2.25 2.25 0 000 4.5h1"/><path d="M6.6 16.5h9.8v2.2a2.3 2.3 0 01-2.3 2.3H8.9a2.3 2.3 0 01-2.3-2.3z"/><path d="M9.5 11.5h5"/>'),
   bell: () => ICO('<path d="M18 8a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7M13.7 21a2 2 0 01-3.4 0"/>'),
   // netopýr – silueta v roztažených křídlech
-  // netopýří znak – pravá polovina, levá je její zrcadlo
+  // netopýří znak – pravá polovina, levá je její zrcadlo (střed x = 1000)
   bat: (cls = "") => {
-    const half = "M120 10 L134 14 L138 2 L143 17 L153 27 Q160 20 168 24 Q176 28 184 22 Q192 16 200 20 L232 34 L206 44 Q196 62 186 50 Q176 66 166 54 Q150 70 138 60 L120 86 Z";
-    return `<svg class="ico ${cls}" viewBox="0 0 240 90" fill="currentColor" aria-hidden="true">
-      <path d="${half}"/><path d="${half}" transform="translate(240,0) scale(-1,1)"/></svg>`;
+    const half = "M1000 360 L1080 245 L1115 440 C1300 425 1440 372 1495 300 "
+      + "C1472 240 1450 192 1420 155 C1600 250 1800 400 1930 610 "
+      + "C1800 656 1640 700 1500 738 C1400 762 1330 780 1270 800 "
+      + "C1160 850 1060 908 1000 965 Z";
+    return `<svg class="ico ${cls}" viewBox="60 140 1880 840" fill="currentColor" aria-hidden="true">
+      <path d="${half}"/><path d="${half}" transform="translate(2000,0) scale(-1,1)"/></svg>`;
   },
   chevronD: () => ICO('<path d="M5 9l7 7 7-7"/>'),
   chevronU: () => ICO('<path d="M5 15l7-7 7 7"/>'),
@@ -1360,6 +1323,19 @@ const Sync = {
 
   // odkaz, který kterékoli zařízení napojí sám od sebe
   link() { return location.origin + location.pathname + "#s=" + this.id; },
+
+  // zařízení, které si drží starý vlastní kód, přesuň na společné úložiště
+  async migrate() {
+    const old = localStorage.getItem("sync_id");
+    if (!old || old === SYNC_DEFAULT_ID) return false;
+    try {
+      const r = await fetch(`${this.API}/${old}`, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (r.ok) this.merge(await r.json());
+    } catch {}
+    localStorage.removeItem("sync_id");
+    await this.push(true);
+    return true;
+  },
 
   // sync kód v adrese → napoj se automaticky, nic se nezadává ručně
   async fromLink() {
@@ -2038,9 +2014,8 @@ function weekDays() {
   const mon = new Date(now); mon.setDate(now.getDate() - off); mon.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    const key = iso(d), ov = plan.overrides || {};
-    return { date: d, key, dow: DOW[i], num: d.getDate(),
-      workoutId: key in ov ? ov[key] : plan.schedule[i + 1] || null,
+    const key = iso(d);
+    return { date: d, key, dow: DOW[i], num: d.getDate(), workoutId: dayPlan(d),
       done: history.find((h) => h.date === key) || null, isToday: key === today() };
   });
 }
@@ -2084,6 +2059,7 @@ function viewHome() {
     <div class="week">${cal}</div>
     <div class="spacer"></div>
     ${hero}
+    <div class="btn-row"><button class="btn btn-2" onclick="openBox()">${I.glove()}Box timer</button></div>
     ${SpotifyUI.bar()}
     ${last7()}
   </div>`;
@@ -2129,9 +2105,21 @@ function closeWeek() { weekOpen = false; render(); }
 function openPlan() { planOpen = true; render(); }
 function closePlan() { planOpen = false; render(); }
 
+// pořadové číslo týdne – podle něj se střídají dvě varianty rozvrhu
+function weekNo(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 3);
+  const first = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t - first) / 86400000 - 3 + ((first.getUTCDay() + 6) % 7)) / 7);
+}
+const schedFor = (d) => {
+  const r = plan.rotation;
+  if (!r) return plan.schedule;
+  return weekNo(d) % 2 ? r.a : r.b;
+};
 function dayPlan(d) {
   const key = iso(d), ov = plan.overrides || {};
-  return key in ov ? ov[key] : plan.schedule[((d.getDay() + 6) % 7) + 1] || null;
+  return key in ov ? ov[key] : schedFor(d)[((d.getDay() + 6) % 7) + 1] || null;
 }
 function setDay(key, wid) {
   plan.overrides = plan.overrides || {};
@@ -2388,7 +2376,7 @@ function viewSummary() {
 // BOXING TIMER – kolo zeleně, pauza červeně, gong na začátku i konci
 // ============================================================
 let box = DB.get("box", null);
-const boxCfg = () => DB.get("boxCfg", { rounds: 3, work: 120, rest: 60 });
+const boxCfg = () => DB.get("boxCfg", { rounds: 3, work: 60, rest: 30 });
 
 function openBox() {
   const c = boxCfg();
@@ -2396,16 +2384,29 @@ function openBox() {
   DB.set("box", box); render();
 }
 function closeBox() { box = null; DB.set("box", null); render(); }
+const boxLim = (k) => (k === "rounds" ? [1, 30] : [15, 120]);
+// hodnoty se mění po 15 s a přepisují se bez překreslení obrazovky
 function boxSet(k, d) {
-  const lim = k === "rounds" ? [1, 20] : [10, 120];
-  const step = k === "rounds" ? 1 : 10;
-  box[k] = Math.min(lim[1], Math.max(lim[0], box[k] + d * step));
+  const [lo, hi] = boxLim(k), step = k === "rounds" ? 1 : 15;
+  boxApply(k, box[k] + d * step);
+}
+function boxType(k, raw) {
+  const v = String(raw).includes(":")
+    ? String(raw).split(":").reduce((a, b) => a * 60 + (+b || 0), 0)
+    : +raw;
+  boxApply(k, v);
+}
+function boxApply(k, v) {
+  const [lo, hi] = boxLim(k);
+  box[k] = Math.min(hi, Math.max(lo, Math.round(v) || lo));
   DB.set("boxCfg", { rounds: box.rounds, work: box.work, rest: box.rest });
-  DB.set("box", box); render();
+  DB.set("box", box);
+  const el = document.getElementById("bx-" + k);
+  if (el) el.value = k === "rounds" ? box[k] : fmtTime(box[k]);
 }
 function boxStart() {
   box.phase = "work"; box.round = 1; box.endAt = Date.now() + box.work * 1000;
-  box._b = {}; DB.set("box", box); bell(); render();
+  box._b = {}; DB.set("box", box); bell(3); keepAwake(true); render();
 }
 function boxTogglePause() {
   if (box.paused) { box.endAt += Date.now() - box.pausedAt; box.paused = false; }
@@ -2416,46 +2417,61 @@ function boxTogglePause() {
 }
 function boxNext() {
   if (box.phase === "work") {
-    if (box.round >= box.rounds) { box.phase = "done"; DB.set("box", box); bell(); setTimeout(bell, 700); return render(); }
+    if (box.round >= box.rounds) { box.phase = "done"; DB.set("box", box); bell(3); keepAwake(false); return render(); }
     box.phase = "rest"; box.endAt = Date.now() + box.rest * 1000;
   } else {
     box.round++; box.phase = "work"; box.endAt = Date.now() + box.work * 1000;
   }
-  box._b = {}; DB.set("box", box); bell(); render();
+  box._b = {}; DB.set("box", box); bell(box.phase === "work" ? 2 : 1); render();
 }
-// boxerský gong, ztlumený
-function bell() {
+// jedno cinknutí ringového zvonu – kovové, s dozvukem
+function ding(at, vol) {
+  const base = 640;
+  // nesouzvučné složky dělají ten kovový zvuk zvonu
+  [[1, 1], [2.02, .62], [2.74, .48], [3.76, .34], [5.42, .22], [7.1, .14]].forEach(([r, a]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(base * r * (1 + (r % 0.7) * 0.002), at);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol * a, at + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 1.9 - r * 0.12);
+    o.connect(g).connect(actx.destination);
+    o.start(at); o.stop(at + 2);
+  });
+  // úder paličky
+  const n = actx.createBufferSource(), buf = actx.createBuffer(1, 1400, actx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length) ** 3;
+  n.buffer = buf;
+  const ng = actx.createGain(); ng.gain.value = vol * 0.5;
+  const hp = actx.createBiquadFilter(); hp.type = "bandpass"; hp.frequency.value = 3200;
+  n.connect(hp).connect(ng).connect(actx.destination);
+  n.start(at);
+}
+// boxerský gong: tři údery za sebou, ztlumené
+function bell(strikes = 3) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
     const t = actx.currentTime;
-    [784, 1174, 1568].forEach((f, i) => {
-      const o = actx.createOscillator(), g = actx.createGain();
-      o.type = i === 0 ? "triangle" : "sine";
-      o.frequency.setValueAtTime(f, t);
-      const peak = 0.3 / (i + 1.4);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(peak, t + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
-      o.connect(g).connect(actx.destination);
-      o.start(t); o.stop(t + 1.7);
-    });
+    for (let i = 0; i < strikes; i++) ding(t + i * 0.42, 0.3);
   } catch {}
 }
 function viewBox() {
   if (box.phase === "setup") {
     const row = (k, label, val) => `<div class="brow">
-      <span>${label}</span>
+      <span class="blab">${label}</span>
       <div class="bctl">
-        <button onclick="boxSet('${k}',-1)">${I.minus()}</button>
-        <b>${val}</b>
-        <button onclick="boxSet('${k}',1)">${I.plus()}</button>
+        <button onclick="boxSet('${k}',-1)" aria-label="méně">${I.minus()}</button>
+        <input id="bx-${k}" class="bval" value="${val}" inputmode="numeric"
+          onfocus="this.select()" onchange="boxType('${k}',this.value)" onblur="boxType('${k}',this.value)">
+        <button onclick="boxSet('${k}',1)" aria-label="víc">${I.plus()}</button>
       </div></div>`;
     return `<div class="screen box-setup">
       <div class="topbar"><button class="back" onclick="closeBox()">${I.close()}</button></div>
       <div class="summary-ico">${I.glove()}</div>
       <h1 class="brand">Box</h1>
-      <div class="sub">nastav si kola</div>
+      <div class="sub">kola po 15 sekundách, dá se i přepsat</div>
       ${row("rounds", "Počet kol", box.rounds)}
       ${row("work", "Délka kola", fmtTime(box.work))}
       ${row("rest", "Pauza", fmtTime(box.rest))}
@@ -2818,10 +2834,9 @@ window.addEventListener("load", () => {
   if (session) keepAwake(true);
   render();
   playIntro();
-  // sync kód v odkazu napojí zařízení sám; jinak dotáhni, co je v cloudu
-  Sync.fromLink().then((joined) => {
+  // starý vlastní kód sluč do společného úložiště, pak dotáhni, co je v cloudu
+  Sync.migrate().then(() => Sync.fromLink()).then((joined) => {
     if (joined) return render();
-    if (!Sync.enabled()) return;
     Sync.pull(true).then(() => {
       // minule se nestihlo uložit (výpadek signálu) → dorovnej to teď
       if (localStorage.getItem("sync_dirty") === "1") Sync.push(true);

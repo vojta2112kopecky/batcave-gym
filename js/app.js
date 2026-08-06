@@ -493,9 +493,8 @@ function weekDays() {
   const mon = new Date(now); mon.setDate(now.getDate() - off); mon.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    const key = iso(d), ov = plan.overrides || {};
-    return { date: d, key, dow: DOW[i], num: d.getDate(),
-      workoutId: key in ov ? ov[key] : plan.schedule[i + 1] || null,
+    const key = iso(d);
+    return { date: d, key, dow: DOW[i], num: d.getDate(), workoutId: dayPlan(d),
       done: history.find((h) => h.date === key) || null, isToday: key === today() };
   });
 }
@@ -539,6 +538,7 @@ function viewHome() {
     <div class="week">${cal}</div>
     <div class="spacer"></div>
     ${hero}
+    <div class="btn-row"><button class="btn btn-2" onclick="openBox()">${I.glove()}Box timer</button></div>
     ${SpotifyUI.bar()}
     ${last7()}
   </div>`;
@@ -584,9 +584,21 @@ function closeWeek() { weekOpen = false; render(); }
 function openPlan() { planOpen = true; render(); }
 function closePlan() { planOpen = false; render(); }
 
+// pořadové číslo týdne – podle něj se střídají dvě varianty rozvrhu
+function weekNo(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 3);
+  const first = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t - first) / 86400000 - 3 + ((first.getUTCDay() + 6) % 7)) / 7);
+}
+const schedFor = (d) => {
+  const r = plan.rotation;
+  if (!r) return plan.schedule;
+  return weekNo(d) % 2 ? r.a : r.b;
+};
 function dayPlan(d) {
   const key = iso(d), ov = plan.overrides || {};
-  return key in ov ? ov[key] : plan.schedule[((d.getDay() + 6) % 7) + 1] || null;
+  return key in ov ? ov[key] : schedFor(d)[((d.getDay() + 6) % 7) + 1] || null;
 }
 function setDay(key, wid) {
   plan.overrides = plan.overrides || {};
@@ -843,7 +855,7 @@ function viewSummary() {
 // BOXING TIMER – kolo zeleně, pauza červeně, gong na začátku i konci
 // ============================================================
 let box = DB.get("box", null);
-const boxCfg = () => DB.get("boxCfg", { rounds: 3, work: 120, rest: 60 });
+const boxCfg = () => DB.get("boxCfg", { rounds: 3, work: 60, rest: 30 });
 
 function openBox() {
   const c = boxCfg();
@@ -851,16 +863,29 @@ function openBox() {
   DB.set("box", box); render();
 }
 function closeBox() { box = null; DB.set("box", null); render(); }
+const boxLim = (k) => (k === "rounds" ? [1, 30] : [15, 120]);
+// hodnoty se mění po 15 s a přepisují se bez překreslení obrazovky
 function boxSet(k, d) {
-  const lim = k === "rounds" ? [1, 20] : [10, 120];
-  const step = k === "rounds" ? 1 : 10;
-  box[k] = Math.min(lim[1], Math.max(lim[0], box[k] + d * step));
+  const [lo, hi] = boxLim(k), step = k === "rounds" ? 1 : 15;
+  boxApply(k, box[k] + d * step);
+}
+function boxType(k, raw) {
+  const v = String(raw).includes(":")
+    ? String(raw).split(":").reduce((a, b) => a * 60 + (+b || 0), 0)
+    : +raw;
+  boxApply(k, v);
+}
+function boxApply(k, v) {
+  const [lo, hi] = boxLim(k);
+  box[k] = Math.min(hi, Math.max(lo, Math.round(v) || lo));
   DB.set("boxCfg", { rounds: box.rounds, work: box.work, rest: box.rest });
-  DB.set("box", box); render();
+  DB.set("box", box);
+  const el = document.getElementById("bx-" + k);
+  if (el) el.value = k === "rounds" ? box[k] : fmtTime(box[k]);
 }
 function boxStart() {
   box.phase = "work"; box.round = 1; box.endAt = Date.now() + box.work * 1000;
-  box._b = {}; DB.set("box", box); bell(); render();
+  box._b = {}; DB.set("box", box); bell(3); keepAwake(true); render();
 }
 function boxTogglePause() {
   if (box.paused) { box.endAt += Date.now() - box.pausedAt; box.paused = false; }
@@ -871,46 +896,61 @@ function boxTogglePause() {
 }
 function boxNext() {
   if (box.phase === "work") {
-    if (box.round >= box.rounds) { box.phase = "done"; DB.set("box", box); bell(); setTimeout(bell, 700); return render(); }
+    if (box.round >= box.rounds) { box.phase = "done"; DB.set("box", box); bell(3); keepAwake(false); return render(); }
     box.phase = "rest"; box.endAt = Date.now() + box.rest * 1000;
   } else {
     box.round++; box.phase = "work"; box.endAt = Date.now() + box.work * 1000;
   }
-  box._b = {}; DB.set("box", box); bell(); render();
+  box._b = {}; DB.set("box", box); bell(box.phase === "work" ? 2 : 1); render();
 }
-// boxerský gong, ztlumený
-function bell() {
+// jedno cinknutí ringového zvonu – kovové, s dozvukem
+function ding(at, vol) {
+  const base = 640;
+  // nesouzvučné složky dělají ten kovový zvuk zvonu
+  [[1, 1], [2.02, .62], [2.74, .48], [3.76, .34], [5.42, .22], [7.1, .14]].forEach(([r, a]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(base * r * (1 + (r % 0.7) * 0.002), at);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol * a, at + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 1.9 - r * 0.12);
+    o.connect(g).connect(actx.destination);
+    o.start(at); o.stop(at + 2);
+  });
+  // úder paličky
+  const n = actx.createBufferSource(), buf = actx.createBuffer(1, 1400, actx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length) ** 3;
+  n.buffer = buf;
+  const ng = actx.createGain(); ng.gain.value = vol * 0.5;
+  const hp = actx.createBiquadFilter(); hp.type = "bandpass"; hp.frequency.value = 3200;
+  n.connect(hp).connect(ng).connect(actx.destination);
+  n.start(at);
+}
+// boxerský gong: tři údery za sebou, ztlumené
+function bell(strikes = 3) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
     const t = actx.currentTime;
-    [784, 1174, 1568].forEach((f, i) => {
-      const o = actx.createOscillator(), g = actx.createGain();
-      o.type = i === 0 ? "triangle" : "sine";
-      o.frequency.setValueAtTime(f, t);
-      const peak = 0.3 / (i + 1.4);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(peak, t + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
-      o.connect(g).connect(actx.destination);
-      o.start(t); o.stop(t + 1.7);
-    });
+    for (let i = 0; i < strikes; i++) ding(t + i * 0.42, 0.3);
   } catch {}
 }
 function viewBox() {
   if (box.phase === "setup") {
     const row = (k, label, val) => `<div class="brow">
-      <span>${label}</span>
+      <span class="blab">${label}</span>
       <div class="bctl">
-        <button onclick="boxSet('${k}',-1)">${I.minus()}</button>
-        <b>${val}</b>
-        <button onclick="boxSet('${k}',1)">${I.plus()}</button>
+        <button onclick="boxSet('${k}',-1)" aria-label="méně">${I.minus()}</button>
+        <input id="bx-${k}" class="bval" value="${val}" inputmode="numeric"
+          onfocus="this.select()" onchange="boxType('${k}',this.value)" onblur="boxType('${k}',this.value)">
+        <button onclick="boxSet('${k}',1)" aria-label="víc">${I.plus()}</button>
       </div></div>`;
     return `<div class="screen box-setup">
       <div class="topbar"><button class="back" onclick="closeBox()">${I.close()}</button></div>
       <div class="summary-ico">${I.glove()}</div>
       <h1 class="brand">Box</h1>
-      <div class="sub">nastav si kola</div>
+      <div class="sub">kola po 15 sekundách, dá se i přepsat</div>
       ${row("rounds", "Počet kol", box.rounds)}
       ${row("work", "Délka kola", fmtTime(box.work))}
       ${row("rest", "Pauza", fmtTime(box.rest))}
@@ -1273,10 +1313,9 @@ window.addEventListener("load", () => {
   if (session) keepAwake(true);
   render();
   playIntro();
-  // sync kód v odkazu napojí zařízení sám; jinak dotáhni, co je v cloudu
-  Sync.fromLink().then((joined) => {
+  // starý vlastní kód sluč do společného úložiště, pak dotáhni, co je v cloudu
+  Sync.migrate().then(() => Sync.fromLink()).then((joined) => {
     if (joined) return render();
-    if (!Sync.enabled()) return;
     Sync.pull(true).then(() => {
       // minule se nestihlo uložit (výpadek signálu) → dorovnej to teď
       if (localStorage.getItem("sync_dirty") === "1") Sync.push(true);

@@ -35,14 +35,18 @@ const I = {
   grip: () => ICO('<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/>'),
   trendUp: () => ICO('<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>'),
   trendFlat: () => ICO('<path d="M3 12h18M17 8l4 4-4 4"/>'),
-  glove: () => ICO('<path d="M7 8a4 4 0 018 0v3M15 11h1.5A2.5 2.5 0 0119 13.5V16a5 5 0 01-5 5h-3a4 4 0 01-4-4V9M7 12h8"/>'),
+  // boxerská rukavice
+  glove: () => ICO('<path d="M8.5 3h5A3.5 3.5 0 0117 6.5v6a3.5 3.5 0 01-3.5 3.5h-4A3.5 3.5 0 016 12.5v-6A3.5 3.5 0 019.5 3z"/><path d="M6 8.5H5a2.25 2.25 0 000 4.5h1"/><path d="M6.6 16.5h9.8v2.2a2.3 2.3 0 01-2.3 2.3H8.9a2.3 2.3 0 01-2.3-2.3z"/><path d="M9.5 11.5h5"/>'),
   bell: () => ICO('<path d="M18 8a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7M13.7 21a2 2 0 01-3.4 0"/>'),
   // netopýr – silueta v roztažených křídlech
-  // netopýří znak – pravá polovina, levá je její zrcadlo
+  // netopýří znak – pravá polovina, levá je její zrcadlo (střed x = 1000)
   bat: (cls = "") => {
-    const half = "M120 10 L134 14 L138 2 L143 17 L153 27 Q160 20 168 24 Q176 28 184 22 Q192 16 200 20 L232 34 L206 44 Q196 62 186 50 Q176 66 166 54 Q150 70 138 60 L120 86 Z";
-    return `<svg class="ico ${cls}" viewBox="0 0 240 90" fill="currentColor" aria-hidden="true">
-      <path d="${half}"/><path d="${half}" transform="translate(240,0) scale(-1,1)"/></svg>`;
+    const half = "M1000 360 L1080 245 L1115 440 C1300 425 1440 372 1495 300 "
+      + "C1472 240 1450 192 1420 155 C1600 250 1800 400 1930 610 "
+      + "C1800 656 1640 700 1500 738 C1400 762 1330 780 1270 800 "
+      + "C1160 850 1060 908 1000 965 Z";
+    return `<svg class="ico ${cls}" viewBox="60 140 1880 840" fill="currentColor" aria-hidden="true">
+      <path d="${half}"/><path d="${half}" transform="translate(2000,0) scale(-1,1)"/></svg>`;
   },
   chevronD: () => ICO('<path d="M5 9l7 7 7-7"/>'),
   chevronU: () => ICO('<path d="M5 15l7-7 7 7"/>'),

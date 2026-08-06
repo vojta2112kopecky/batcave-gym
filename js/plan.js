@@ -1,6 +1,7 @@
 // ============================================================
 // TRÉNINKOVÝ PLÁN – staženo z app.trenerpetr.cz
-// Vlastní split · Pokročilý · 4× týdně · třítýdenní rotace
+// Vlastní split · A prsa/ramena/triceps · B záda/biceps · C nohy
+// Rotace po týdnech: A B – A B – –  /  A B – A C – –
 //
 // sets: type prep = rozcvičovací, work = pracovní
 //       from–to = cílový rozsah opakování
@@ -10,7 +11,7 @@
 // ============================================================
 const DEFAULT_PLAN = {
   source: "Trenér Petr · Vlastní split · 4× týdně",
-  version: 9,
+  version: 10,
   meta: { level: "Pokročilý", freq: "4× týdně", rotation: 3 },
   // pauzy: po přípravné sérii i mezi přípravnou a pracovní 1:30,
   // mezi pracovními sériemi 1:45, mezi cviky 2:00
@@ -19,8 +20,14 @@ const DEFAULT_PLAN = {
   restBetweenExercises: 120,
   // kolik tréninků po sobě musíš dát horní hranici, než appka přidá kilo
   progressAfter: 2,
-  // běžný týden – 1 = pondělí … 7 = neděle; středa, sobota a neděle volno
-  schedule: { 1: "A", 2: "B", 4: "C", 5: "D" },
+  // dvoutýdenní rotace, 1 = pondělí … 7 = neděle
+  //   lichý týden:  A B – A B – –
+  //   sudý týden:   A B – A C – –   (C = nohy)
+  rotation: {
+    a: { 1: "A", 2: "B", 4: "A", 5: "B" },
+    b: { 1: "A", 2: "B", 4: "A", 5: "C" },
+  },
+  schedule: { 1: "A", 2: "B", 4: "A", 5: "B" },
   // konkrétní dny přebíjejí běžný rozvrh (null = volno) – mění se v appce
   overrides: {},
   workouts: [
@@ -185,67 +192,6 @@ const DEFAULT_PLAN = {
             { type: "work", from: 15, to: 25, kg: 40 },
             { type: "work", from: 15, to: 25, kg: 40 },
             { type: "work", from: 15, to: 25, kg: 40 },
-          ],
-        },
-      ],
-    },
-    {
-      id: "D", name: "TRÉNINK D", focus: "Prsa · Ramena · Triceps",
-      exercises: [
-        {
-          id: "chest-upper-incline-smith-bench", name: "Tlaky na šikmé lavici v multipressu",
-          sub: "Vrchní část prsou", part: "Prsa", step: 5, rest: 155, restPrep: 95,
-          sets: [
-            { type: "prep", from: 8, to: 10, kg: 25 },
-            { type: "prep", from: 8, to: 10, kg: 30 },
-            { type: "work", from: 4, to: 6, kg: 45 },
-            { type: "work", from: 8, to: 10, kg: 40 },
-          ],
-        },
-        {
-          id: "chest-mid-flat-dumbbell-bench", name: "Tlaky na rovné lavici s jednoručkami",
-          sub: "Středy a spodky prsou", part: "Prsa", step: 2, rest: 125, restPrep: 95,
-          sets: [
-            { type: "prep", from: 8, to: 10, kg: 17 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-            { type: "work", from: 8, to: 10, kg: 22 },
-          ],
-        },
-        {
-          id: "chest-fly-machine", name: "Rozpažování na rovné lavici s jednoručkami",
-          sub: "Prsa", part: "Prsa", step: 2, rest: 95, restPrep: 80,
-          sets: [
-            { type: "work", from: 10, to: 15, kg: 31 },
-            { type: "work", from: 10, to: 15, kg: 31 },
-            { type: "work", from: 10, to: 15, kg: 31 },
-          ],
-        },
-        {
-          id: "shoulders-side-dumbbell-lateral", name: "Upažování s jednoručkami",
-          sub: "Boční delty", part: "Ramena", step: 1, rest: 95, restPrep: 65,
-          sets: [
-            { type: "work", from: 10, to: 15, kg: 7 },
-            { type: "work", from: 10, to: 15, kg: 8 },
-            { type: "work", from: 10, to: 15, kg: 8 },
-          ],
-        },
-        {
-          id: "triceps-lateral-pushdown", name: "Stahování kladky",
-          sub: "Laterální a mediální hlava", part: "Triceps", step: 2.5, rest: 95, restPrep: 65,
-          sets: [
-            { type: "prep", from: 10, to: 12, kg: 15 },
-            { type: "prep", from: 10, to: 12, kg: 20 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-          ],
-        },
-        {
-          id: "triceps-long-seated-flat-smith-french-press", name: "Francouzské tlaky vstoje v multipressu",
-          sub: "Dlouhá hlava", part: "Triceps", step: 5, rest: 125, restPrep: 80,
-          sets: [
-            { type: "prep", from: 10, to: 12, kg: 15 },
-            { type: "work", from: 8, to: 10, kg: 25 },
-            { type: "work", from: 8, to: 10, kg: 25 },
           ],
         },
       ],
