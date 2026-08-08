@@ -34,7 +34,57 @@ def stamp_index():
     return out
 
 
+def write_sw(ver):
+    """Service worker – appka pak jede i bez signálu."""
+    assets = ["./", "./index.html", "./manifest.json", "./icon.png", "./icon-180.png"]
+    for d in ("css", "js"):
+        for f in sorted(os.listdir(os.path.join(ROOT, d))):
+            if f.endswith((".css", ".js")):
+                assets.append(f"./{d}/{f}?v={ver}")
+    sp = os.path.join(ROOT, "splash")
+    if os.path.isdir(sp):
+        assets += [f"./splash/{f}" for f in sorted(os.listdir(sp)) if f.endswith(".png")]
+    body = (
+        "// Generuje build.py – needituj ručně.\n"
+        f'const V = "batcave-{ver}";\n'
+        f"const ASSETS = {assets!r};\n".replace("'", '"') +
+        """
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(V).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", (e) => {
+  e.waitUntil(caches.keys()
+    .then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k))))
+    .then(() => self.clients.claim()));
+});
+self.addEventListener("fetch", (e) => {
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  // cloud a Spotify vždycky ze sítě
+  if (url.origin !== location.origin) return;
+  e.respondWith(
+    caches.match(req, { ignoreSearch: false }).then((hit) => {
+      if (hit) return hit;
+      return fetch(req).then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(V).then((c) => c.put(req, copy));
+        }
+        return res;
+      }).catch(() => caches.match("./index.html"));
+    })
+  );
+});
+"""
+    )
+    with open(os.path.join(ROOT, "sw.js"), "w", encoding="utf-8") as f:
+        f.write(body)
+    print("sw.js:", len(assets), "souborů v cache")
+
+
 html = stamp_index()
+write_sw(re.search(r'\?v=([a-f0-9]+)', html).group(1))
 
 # CSS inline
 for m in re.findall(r'<link rel="stylesheet" href="([^"]+)">', html):

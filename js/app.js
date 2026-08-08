@@ -1346,6 +1346,10 @@ window.addEventListener("load", () => {
   if (session) keepAwake(true);
   render();
   playIntro();
+  // offline režim – v posilovně bez signálu appka pojede dál
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
   // starý vlastní kód sluč do společného úložiště, pak dotáhni, co je v cloudu
   Sync.migrate().then(() => Sync.fromLink()).then((joined) => {
     if (joined) return render();

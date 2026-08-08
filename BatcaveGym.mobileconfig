@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.apple.webClip.managed</string>
+			<key>PayloadIdentifier</key>
+			<string>cz.vojtakopecky.batcavegym.webclip</string>
+			<key>PayloadUUID</key>
+			<string>9CAB6315-CD54-535B-99DC-F8281BE6E04E</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadDisplayName</key>
+			<string>Batcave Gym</string>
+			<key>URL</key>
+			<string>https://vojta2112kopecky.github.io/batcave-gym/</string>
+			<key>Label</key>
+			<string>Batcave Gym</string>
+			<key>Icon</key>
+			<data>
+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
+IAAAAABJRU5ErkJggg==
+			</data>
+			<key>IsRemovable</key>
+			<true/>
+			<key>FullScreen</key>
+			<true/>
+			<key>Precomposed</key>
+			<true/>
+			<key>IgnoreManifestScope</key>
+			<true/>
+		</dict>
+	</array>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadIdentifier</key>
+	<string>cz.vojtakopecky.batcavegym</string>
+	<key>PayloadUUID</key>
+	<string>46AB59C9-CFB5-576B-9458-8CBE22613745</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>PayloadDisplayName</key>
+	<string>Batcave Gym</string>
+	<key>PayloadDescription</key>
+	<string>Přidá na plochu ikonu tréninkové appky Batcave Gym. Nesbírá žádná data.</string>
+	<key>PayloadOrganization</key>
+	<string>Vojta Kopecký</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+</dict>
+</plist>
