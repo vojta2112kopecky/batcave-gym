@@ -682,6 +682,14 @@ function wProgress() {
     return `<i class="${cls}">${i < session.exIndex ? I.check() : ""}</i>`;
   }).join("")}</div>`;
 }
+// kolik sérií zbývá v tomhle cviku – tenčí pruh pod tím prvním
+function sProgress(nextIdx) {
+  const ex = curEx(), sets = exSets(ex);
+  return `<div class="wprog sets">${sets.map((s, i) => {
+    const cls = i < nextIdx ? "done" : i === nextIdx ? "cur" : "";
+    return `<i class="${cls} ${s.type === "prep" ? "prep" : ""}"></i>`;
+  }).join("")}</div>`;
+}
 // spodní dok: nahoře drobná tlačítka, pak Spotify, dole hlavní akce – nikdy se nehýbe
 function dock(main, extra) {
   return `<div class="dock">
@@ -747,7 +755,7 @@ function viewRecord() {
 function viewWork() {
   const ex = curEx(), i = session.setIndex;
   const logged = session.entries[ex.id]?.sets.length || 0;
-  return `<div class="screen wk">
+  return `<div class="screen wk phase-work">
     ${head(ex)}
     ${statsBlock(ex, i)}
     <div class="timer-wrap">
@@ -764,7 +772,7 @@ function viewWork() {
 }
 function viewLog() {
   const ex = curEx();
-  return `<div class="screen wk">
+  return `<div class="screen wk phase-work">
     ${head(ex)}
     <div class="stepper">
       <div class="label">Váha</div>
@@ -791,11 +799,11 @@ function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rV
 function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   const p = planFor(ex, nextIdx);
-  // políčka cviků jen o velké pauze mezi cviky
   const between = !!session._afterRpe;
-  return `<div class="screen wk rest-screen">
+  return `<div class="screen wk rest-screen ${between ? "phase-between" : "phase-rest"}">
     <div class="topbar"><button class="back" onclick="askAbort()" aria-label="Ukončit trénink">${I.close()}</button></div>
-    ${between ? wProgress() : ""}
+    ${wProgress()}
+    ${sProgress(nextIdx)}
     <div class="timer-wrap">
       <div class="timer rest ${session.paused ? "paused" : ""}" id="restTimer">--:--</div>
       <div class="timer-label">${I.clock()}<span id="restLabel">${session.paused ? "Pauza" : "Rest"}</span></div>

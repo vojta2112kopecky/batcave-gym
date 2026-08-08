@@ -10,7 +10,7 @@
 // Trvalé úložiště – stejné na všech zařízeních, nic se nezadává.
 // Pozor: tenhle identifikátor je v public repu, takže kdo ho najde, na data vidí.
 // Jsou tam jen čísla z tréninku – žádné jméno, mail ani přihlašovací údaje.
-const SYNC_DEFAULT_ID = "019fd62f-7ae2-7874-ad4b-73722abb7bf7";
+const SYNC_DEFAULT_ID = "019fe035-07c2-71be-9fa6-e8eefa485046";
 
 const Sync = {
   API: "https://jsonblob.com/api/jsonBlob",
@@ -37,6 +37,22 @@ const Sync = {
 
   // odkaz, který kterékoli zařízení napojí sám od sebe
   link() { return location.origin + location.pathname + "#s=" + this.id; },
+
+  // úložiště přestalo existovat: založ nové a nahraj do něj, co mám lokálně
+  async reopen() {
+    try {
+      const r = await fetch(this.API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(this.payload()),
+      });
+      const id = (r.headers.get("Location") || "").split("/").pop();
+      if (!id) throw new Error("nešlo založit");
+      this.id = id;
+      localStorage.setItem("sync_dirty", "0");
+      this.done("ok", "obnoveno");
+    } catch (e) { this.done("err", e.message); }
+  },
 
   // zařízení, které si drží starý vlastní kód, přesuň na společné úložiště
   async migrate() {
@@ -129,6 +145,8 @@ const Sync = {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),
       });
+      // úložiště zmizelo → založ nové, ať se nikdy neztratí zápis
+      if (r.status === 404) { await this.reopen(); return; }
       if (!r.ok) throw new Error("HTTP " + r.status);
       localStorage.setItem("sync_local_updated", body.updated);
       localStorage.setItem("sync_dirty", "0");

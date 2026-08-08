@@ -316,6 +316,20 @@ h2 svg.ico { width: 14px; height: 14px; }
 }
 @keyframes burn { from { background-position: 130% 0; } to { background-position: -30% 0; } }
 @media (prefers-reduced-motion: reduce) { .wprog i.cur { animation: none; background: var(--accent-soft); } }
+/* druhý, tenčí pruh = série uvnitř cviku */
+.wprog.sets { margin-top: -8px; margin-bottom: 16px; gap: 4px; }
+.wprog.sets i { height: 7px; border-radius: 4px; }
+.wprog.sets i.prep { opacity: .55; }
+
+/* ---- jemné barevné odlišení fází ---- */
+.phase-work { background: radial-gradient(ellipse 110% 45% at 50% 38%, rgba(48, 209, 88, .07), transparent 72%); }
+.phase-rest { background: radial-gradient(ellipse 110% 45% at 50% 38%, rgba(255, 69, 58, .07), transparent 72%); }
+.phase-between { background: radial-gradient(ellipse 110% 45% at 50% 38%, rgba(255, 255, 255, .05), transparent 72%); }
+.phase-rest .timer.rest { color: #ff8f86; text-shadow: 0 0 60px rgba(255, 69, 58, .28); }
+.phase-rest .rest-bar i { background: linear-gradient(90deg, rgba(255, 69, 58, .55), #ff8f86); }
+.phase-between .timer.rest { color: var(--text); text-shadow: 0 0 60px rgba(255, 255, 255, .12); }
+.phase-between .rest-bar i { background: linear-gradient(90deg, var(--dim), var(--muted)); }
+.phase-rest .pause-btn.on, .phase-between .pause-btn.on { background: var(--s3); border-color: var(--line2); color: var(--text); }
 
 /* ---- pauza během restu ---- */
 .rest-ctrl { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 16px; }
@@ -1294,7 +1308,7 @@ async function spCmd(cmd) { await SpotifyUI.call(cmd); }
 // Trvalé úložiště – stejné na všech zařízeních, nic se nezadává.
 // Pozor: tenhle identifikátor je v public repu, takže kdo ho najde, na data vidí.
 // Jsou tam jen čísla z tréninku – žádné jméno, mail ani přihlašovací údaje.
-const SYNC_DEFAULT_ID = "019fd62f-7ae2-7874-ad4b-73722abb7bf7";
+const SYNC_DEFAULT_ID = "019fe035-07c2-71be-9fa6-e8eefa485046";
 
 const Sync = {
   API: "https://jsonblob.com/api/jsonBlob",
@@ -1321,6 +1335,22 @@ const Sync = {
 
   // odkaz, který kterékoli zařízení napojí sám od sebe
   link() { return location.origin + location.pathname + "#s=" + this.id; },
+
+  // úložiště přestalo existovat: založ nové a nahraj do něj, co mám lokálně
+  async reopen() {
+    try {
+      const r = await fetch(this.API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(this.payload()),
+      });
+      const id = (r.headers.get("Location") || "").split("/").pop();
+      if (!id) throw new Error("nešlo založit");
+      this.id = id;
+      localStorage.setItem("sync_dirty", "0");
+      this.done("ok", "obnoveno");
+    } catch (e) { this.done("err", e.message); }
+  },
 
   // zařízení, které si drží starý vlastní kód, přesuň na společné úložiště
   async migrate() {
@@ -1413,6 +1443,8 @@ const Sync = {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),
       });
+      // úložiště zmizelo → založ nové, ať se nikdy neztratí zápis
+      if (r.status === 404) { await this.reopen(); return; }
       if (!r.ok) throw new Error("HTTP " + r.status);
       localStorage.setItem("sync_local_updated", body.updated);
       localStorage.setItem("sync_dirty", "0");
@@ -2201,6 +2233,14 @@ function wProgress() {
     return `<i class="${cls}">${i < session.exIndex ? I.check() : ""}</i>`;
   }).join("")}</div>`;
 }
+// kolik sérií zbývá v tomhle cviku – tenčí pruh pod tím prvním
+function sProgress(nextIdx) {
+  const ex = curEx(), sets = exSets(ex);
+  return `<div class="wprog sets">${sets.map((s, i) => {
+    const cls = i < nextIdx ? "done" : i === nextIdx ? "cur" : "";
+    return `<i class="${cls} ${s.type === "prep" ? "prep" : ""}"></i>`;
+  }).join("")}</div>`;
+}
 // spodní dok: nahoře drobná tlačítka, pak Spotify, dole hlavní akce – nikdy se nehýbe
 function dock(main, extra) {
   return `<div class="dock">
@@ -2266,7 +2306,7 @@ function viewRecord() {
 function viewWork() {
   const ex = curEx(), i = session.setIndex;
   const logged = session.entries[ex.id]?.sets.length || 0;
-  return `<div class="screen wk">
+  return `<div class="screen wk phase-work">
     ${head(ex)}
     ${statsBlock(ex, i)}
     <div class="timer-wrap">
@@ -2283,7 +2323,7 @@ function viewWork() {
 }
 function viewLog() {
   const ex = curEx();
-  return `<div class="screen wk">
+  return `<div class="screen wk phase-work">
     ${head(ex)}
     <div class="stepper">
       <div class="label">Váha</div>
@@ -2310,11 +2350,11 @@ function bumpR(d) { session.pendingR = Math.max(0, session.pendingR + d); $("#rV
 function viewRest() {
   const ex = curEx(), nextIdx = session._afterRpe ? 0 : session.setIndex + 1;
   const p = planFor(ex, nextIdx);
-  // políčka cviků jen o velké pauze mezi cviky
   const between = !!session._afterRpe;
-  return `<div class="screen wk rest-screen">
+  return `<div class="screen wk rest-screen ${between ? "phase-between" : "phase-rest"}">
     <div class="topbar"><button class="back" onclick="askAbort()" aria-label="Ukončit trénink">${I.close()}</button></div>
-    ${between ? wProgress() : ""}
+    ${wProgress()}
+    ${sProgress(nextIdx)}
     <div class="timer-wrap">
       <div class="timer rest ${session.paused ? "paused" : ""}" id="restTimer">--:--</div>
       <div class="timer-label">${I.clock()}<span id="restLabel">${session.paused ? "Pauza" : "Rest"}</span></div>

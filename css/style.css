@@ -304,6 +304,20 @@ h2 svg.ico { width: 14px; height: 14px; }
 }
 @keyframes burn { from { background-position: 130% 0; } to { background-position: -30% 0; } }
 @media (prefers-reduced-motion: reduce) { .wprog i.cur { animation: none; background: var(--accent-soft); } }
+/* druhý, tenčí pruh = série uvnitř cviku */
+.wprog.sets { margin-top: -8px; margin-bottom: 16px; gap: 4px; }
+.wprog.sets i { height: 7px; border-radius: 4px; }
+.wprog.sets i.prep { opacity: .55; }
+
+/* ---- jemné barevné odlišení fází ---- */
+.phase-work { background: radial-gradient(ellipse 110% 45% at 50% 38%, rgba(48, 209, 88, .07), transparent 72%); }
+.phase-rest { background: radial-gradient(ellipse 110% 45% at 50% 38%, rgba(255, 69, 58, .07), transparent 72%); }
+.phase-between { background: radial-gradient(ellipse 110% 45% at 50% 38%, rgba(255, 255, 255, .05), transparent 72%); }
+.phase-rest .timer.rest { color: #ff8f86; text-shadow: 0 0 60px rgba(255, 69, 58, .28); }
+.phase-rest .rest-bar i { background: linear-gradient(90deg, rgba(255, 69, 58, .55), #ff8f86); }
+.phase-between .timer.rest { color: var(--text); text-shadow: 0 0 60px rgba(255, 255, 255, .12); }
+.phase-between .rest-bar i { background: linear-gradient(90deg, var(--dim), var(--muted)); }
+.phase-rest .pause-btn.on, .phase-between .pause-btn.on { background: var(--s3); border-color: var(--line2); color: var(--text); }
 
 /* ---- pauza během restu ---- */
 .rest-ctrl { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 16px; }
